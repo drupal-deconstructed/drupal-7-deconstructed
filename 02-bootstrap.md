@@ -68,3 +68,5 @@ The [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%
 2. It creates many of our favorite global variables, such as `$cookie_domain`, `$conf`, `$is_https`, and more!
 
 And that's the end of the CONFIGURATION bootstrap. 1 down, 7 to go!
+
+<h1>MORE TO COME HERE</h1>
