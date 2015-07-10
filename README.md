@@ -10,7 +10,7 @@ to include API links to any functions or classes that I talk about, so click awa
 
 ## Contributing
 
-If you want to contribute to the book, you have a few options.
+If you want to contribute to this, you have a few options.
 
 1. Submit pull requests for updates or new chapters
 2. Subscribe to the repo and review new updates as they come in
@@ -19,7 +19,7 @@ If you want to contribute to the book, you have a few options.
 ## FAQ
 
 <dl>
-  <dt>Who is this book for?</dt>
+  <dt>Who is this for?</dt>
   <dd>Any developer who has ever wanted to know how Drupal works.</dd>
 
   <dt>Do I have to be an expert to understand it?</dt>
