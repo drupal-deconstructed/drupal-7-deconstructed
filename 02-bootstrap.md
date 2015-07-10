@@ -17,7 +17,7 @@ What is "everything"? I'm glad you asked. All of the possible values for the par
 
 Each of these are defined in more detail below.
 
-## `DRUPAL_BOOTSTRAP_CONFIGURATION`
+## 1. `DRUPAL_BOOTSTRAP_CONFIGURATION`
 
 This guy just calls [`_drupal_bootstrap_configuration()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_configuration/7), which in turn does the following:
 
@@ -69,7 +69,7 @@ The [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%
 
 And that's the end of the CONFIGURATION bootstrap. 1 down, 7 to go!
 
-## `DRUPAL_BOOTSTRAP_PAGE_CACHE`
+## 2. `DRUPAL_BOOTSTRAP_PAGE_CACHE`
 
 When bootstrapping the page cache, everything happens inside [`_drupal_bootstrap_page_cache()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_page_cache/7) which does a lot of work.
 
@@ -160,9 +160,9 @@ Otherwise, it doesn't do any of the above, and just sets the `X-Drupal-Cache: MI
 
 Whew. That's a lot of stuff. Luckily, the next section is easier.
 
-## `DRUPAL_BOOTSTRAP_DATABASE`
+## 3. `DRUPAL_BOOTSTRAP_DATABASE`
 
-We're not going to get super in the weeds with everything Drupal does with the database here, since that deserves its own chapter, but here's an overview of the parts that happen while bootstrapping, within the [`_drupal_bootstrap_database ()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_database/7) function.
+We're not going to get super in the weeds with everything Drupal does with the database here, since that deserves its own chapter, but here's an overview of the parts that happen while bootstrapping, within the [`_drupal_bootstrap_database()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_database/7) function.
 
 ### Checks to see if we have a database configured
 
@@ -192,4 +192,67 @@ spl_autoload_register('drupal_autoload_interface');
 
 This is just a tricky way of ensuring that a class or interface actually exists, when we try to autoload one. Both [`drupal_autoload_class()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_autoload_class/7) and [`drupal_autoload_interface()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_autoload_interface/7) just call [`registry_check_code()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_registry_check_code/7), which looks for the given class or interface first in the `cache_bootstrap` table, then `registry` table if no cache is found. 
 
-If it finds the class or interface, it will `require_once` the file that contains that class or interface. Otherwise, it just returns FALSE so Drupal knows that somebody screwed the pooch and we're looking for a class or interface that doesn't exist.
+If it finds the class or interface, it will `require_once` the file that contains that class or interface and return `TRUE`. Otherwise, it just returns `FALSE` so Drupal knows that somebody screwed the pooch and we're looking for a class or interface that doesn't exist.
+
+So, in English, it's saying "*Ok, it looks like you're trying to autoload a class or an interface, so I'll figure out which file it's in by checking the cache or the registry database table, and then include that file, if I can find it.*"
+
+## 4. `DRUPAL_BOOTSTRAP_VARIABLES`
+
+This one just calls [`_drupal_bootstrap_variables()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_variables/7), which actually does a good bit more than just including the variables from the variables table. 
+
+Here's what it does:
+
+### Initializes the locking system
+
+```php
+require_once DRUPAL_ROOT . '/' . variable_get('lock_inc', 'includes/lock.inc');
+lock_initialize();
+```
+
+Drupal's locking system allows us to create arbitrary locks on certain operations, to prevent race conditions and other bad things. If you're interested to read more about this, there is a very good [API page about it](https://api.drupal.org/api/drupal/includes!lock.inc/group/lock/7).
+
+The two lines of code here don't actually acquire any locks, they just initialize the locking system so that later code can use it. In fact, it's actually used in the very next section.
+
+### Load variables from the database
+
+```php
+global $conf;
+$conf = variable_initialize(isset($conf) ? $conf : array());
+```
+
+The [`variable_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/variable_initialize/7) function basically just returns everything from the `variables` database table, which in this case adds it all to the global `$conf` array, so that we can `variable_get()` things from it later.
+
+But there are a few important details:
+
+1. It tries to load from the cache first, by looking for the `variables` cache ID in the `cache_bootstrap` table.
+2. Assuming the cache failed, it tries to acquire a lock to avoid a stampede if a ton of requests are all trying to grab the `variables` table at the same time. 
+3. Once it has the lock acquired, it grabs everything from the `variables` table.
+4. Then it caches all of that, so that step 1 won't fail next time.
+5. Finally, it releases the lock.
+
+### Load all enabled modules
+
+```php
+require_once DRUPAL_ROOT . '/includes/module.inc';
+module_load_all(TRUE);
+```
+
+I know, right? The seemingly cut and dry variables bootstrap is responsible for loading every single enabled module on the site. Who would have thought?
+
+Well, that's what's happening. The [`module_load_all()`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_load_all/7) does exactly what you'd expect - grabs the name of every enabled module using `module_list()` and then runs `drupal_load()` on it to load it. There's also a static cache in this function so that it only runs once per request.
+
+### Sanitize the `destination` URL parameter
+
+Here's another one that you wouldn't expect to happen as part of bootstrapping variables. 
+
+The `$_GET['destination']` parameter needs to be protected against open redirect attacks leading to other domains. So what we do here is to check to see if it's set to an external URL, and if so, we unset it. 
+
+The reason we have to do this during the variables bootstrap is because we need to call the [`url_is_external()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/url_is_external/7) to do it, and that function requires the variable system to be available.
+
+## 5. `DRUPAL_BOOTSTRAP_SESSION`
+
+## 6. `DRUPAL_BOOTSTRAP_PAGE_HEADER`
+
+## 7. `DRUPAL_BOOTSTRAP_LANGUAGE`
+
+## 8. `DRUPAL_BOOTSTRAP_FULL`
