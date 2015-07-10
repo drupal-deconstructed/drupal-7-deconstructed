@@ -2,6 +2,12 @@
 
 *A plain(ish) English description of how the big pieces of Drupal 7 do what they do.*
 
+If you've ever wondered how Drupal works, then this is for you.
+
+It should be readable without having the actual core code in front of you, but feel
+free to reference the actual code for anything that you'd like as you go. I've tried
+to include API links to any functions or classes that I talk about, so click away!
+
 ## Contributing
 
 If you want to contribute to the book, you have a few options.
@@ -13,6 +19,12 @@ If you want to contribute to the book, you have a few options.
 ## FAQ
 
 <dl>
+  <dt>Who is this book for?</dt>
+  <dd>Any developer who has ever wanted to know how Drupal works.</dd>
+
+  <dt>Do I have to be an expert to understand it?</dt>
+  <dd>No. As long as you have a basic understanding of the basics (nodes, blocks, users, roles, etc.) then it should make sense for the most part.</dd>
+
   <dt>Is this going to end up as a book or a blog series or what?</dt>
   <dd>I don't know yet. Suggestions welcome. Maybe Leanpub?</dd>
 
