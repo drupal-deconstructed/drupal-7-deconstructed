@@ -211,7 +211,7 @@ lock_initialize();
 
 Drupal's locking system allows us to create arbitrary locks on certain operations, to prevent race conditions and other bad things. If you're interested to read more about this, there is a very good [API page about it](https://api.drupal.org/api/drupal/includes!lock.inc/group/lock/7).
 
-The two lines of code here don't actually acquire any locks, they just initialize the locking system so that later code can use it. In fact, it's actually used in the very next section.
+The two lines of code here don't actually acquire any locks, they just initialize the locking system so that later code can use it. In fact, it's actually used in the very next section, which is why it's initialized in this seemingly unrelated phase of the bootstrap process.
 
 ### Load variables from the database
 
