@@ -230,16 +230,16 @@ But there are a few important details:
 4. Then it caches all of that, so that step 1 won't fail next time.
 5. Finally, it releases the lock.
 
-### Load all enabled modules
+### Load all "bootstrap mode" modules
 
 ```php
 require_once DRUPAL_ROOT . '/includes/module.inc';
 module_load_all(TRUE);
 ```
 
-I know, right? The seemingly cut and dry variables bootstrap is responsible for loading every single enabled module on the site. Who would have thought?
+Note that this may seem scary (OH MY GOD we're loading every single module just to bootstrap the variables!) but it's not. That `TRUE` is a big deal, because that tells Drupal to only load the "bootstrap" modules. A "bootstrap" module is a module that has the `bootstrap` column in the `system` table set to 1 for it. 
 
-Well, that's what's happening. The [`module_load_all()`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_load_all/7) does exactly what you'd expect - grabs the name of every enabled module using `module_list()` and then runs `drupal_load()` on it to load it. There's also a static cache in this function so that it only runs once per request.
+On the typical Drupal site, this will only be a handful of modules that are specifically required this early in the bootstrap, like the Syslog module or the System module, or some contrib modules like Redirect or Variable.
 
 ### Sanitize the `destination` URL parameter
 
@@ -247,12 +247,211 @@ Here's another one that you wouldn't expect to happen as part of bootstrapping v
 
 The `$_GET['destination']` parameter needs to be protected against open redirect attacks leading to other domains. So what we do here is to check to see if it's set to an external URL, and if so, we unset it. 
 
-The reason we have to do this during the variables bootstrap is because we need to call the [`url_is_external()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/url_is_external/7) to do it, and that function requires the variable system to be available.
+The reason we have to wait for the variables bootstrap for this is that we need to call the [`url_is_external()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/url_is_external/7) function to do it, and that function a variable to store the list of allowed protocols.
 
 ## 5. `DRUPAL_BOOTSTRAP_SESSION`
 
+Bootstrapping the session means requiring the `session.inc` file and then running [`drupal_session_initialize()`](https://api.drupal.org/api/drupal/includes%21session.inc/function/drupal_session_initialize/7), which is a pretty fun function.
+
+### Register custom session handlers
+
+The first thing that happens here is that Drupal registers custom session handlers with PHP:
+
+```php
+session_set_save_handler('_drupal_session_open', '_drupal_session_close', 
+  '_drupal_session_read', '_drupal_session_write', 
+  '_drupal_session_destroy', '_drupal_session_garbage_collection');
+```
+
+If you've never seen the [`session_set_save_handler()`](http://php.net/session_set_save_handler) PHP function before, it just allows you to set your own custom session storage functions, so that you can have full control over what happens when sessions are opened, closed, read, written, destroyed, or garbage collected. As you can see above, Drupal implements its own handlers for all 6 of those.
+
+What does Drupal actually do in those 6 handler functions? 
+
+- `_drupal_session_open()` and `_drupal_session_close()` both literally just `return TRUE;`.
+- `_drupal_session_read()` fetchs the session from the `sessions` table, and does a join on the `users` table to include the user data along with it.
+- `_drupal_session_write()` checks to see if the session has been updated in the current page request or more than 180 seconds have passed since the last update, and if so, it gathers up session data and drops it into the `sessions` table with a `db_merge()`.
+- `_drupal_session_destroy()` just deletes the appropriate row from the `sessions` DB table, sets the global `$user` object to be the anonymous user, and deletes cookies.
+- `_drupal_session_garbage_collection()` deletes all sessions from the `sessions` table that are older than whatever the max lifetime is set to in PHP (i.e., whatever `session.gc_maxlifetime` is set to).
+
+### If we already have a session cookie, then start the session
+
+We then check to see if there's a valid session cookie in `$_COOKIE[session_name()]`, and if so, we run the [`drupal_session_start()`](https://api.drupal.org/api/drupal/includes%21session.inc/function/drupal_session_start/7). If you're a PHP developer and you just want to know where `session_start()` happens, then you've found it.
+
+That's basically all that `drupal_session_start()` does, besides making sure that we're not a command line client and we haven't already started the session.
+
+### Disable page cache for this request
+
+Remember back in the `DRUPAL_BOOTSTRAP_PAGE_CACHE` section where I said that authenticated users don't get cached pages (unless you use something outside of Drupal core)? This is the part that makes that happen.
+
+```php
+if (!empty($user->uid) || !empty($_SESSION)) {
+  drupal_page_is_cacheable(FALSE);
+}
+```
+
+So if we have a session or a nonzero user ID, then we mark this page as uncacheable, because we may be seeing user-specific data on it which we don't want anyone else to see.
+
+### If we don't already have a session cookie, lazily start one
+
+This part's tricky. Drupal lazily starts sessions at the end of the request, so all the bootstrap process has to do is create a session ID and tell $_COOKIE about it, so that it can get picked up at the end.
+
+```php
+session_id(drupal_random_key());
+$insecure_session_name = substr(session_name(), 1);
+$session_id = drupal_random_key();
+$_COOKIE[$insecure_session_name] = $session_id;
+```
+
+I won't go in detail here since we're talking about the bootstrap, but at the end of the request, `drupal_page_footer()` or `drupal_exit()` (depending on which one is responsible for closing this particular request) will call [`drupal_session_commit()`](https://api.drupal.org/api/drupal/includes%21session.inc/function/drupal_session_commit/7), which checks to see if there's anything in $_SESSION that we need to save to the database, and will run `drupal_session_start()` if so.
+
+### Sets PHP's default timezone from the user's timezone
+
+```php
+date_default_timezone_set(drupal_get_user_timezone());
+```
+
+You may remember that the cache bootstrap above was responsible for setting the timezone for cached pages. This is where the timezone gets set for uncached pages. 
+
+The [`drupal_get_user_timezone()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_get_user_timezone/7) is very simple. It just checks to see if user-configurable timezones are enabled and the user has one set, and uses that if so, otherwise it falls back to the site's default timezone setting.
+
 ## 6. `DRUPAL_BOOTSTRAP_PAGE_HEADER`
+
+This is probably the simplest of the bootstrap levels. It does 2 very simple things in the [`_drupal_bootstrap_page_header()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/_drupal_bootstrap_page_header/7) function.
+
+### Invokes hook_boot()
+
+```php
+bootstrap_invoke_all('boot');
+```
+
+If you've ever wondered how much of the bootstrap process has to complete before you can be guaranteed that hook_boot will run, there's your answer. Remember that for cached pages, it will have already run back in the cache bootstrap, but for uncached pages, this is where it happens.
+
+### Sends initial HTTP headers 
+
+There's a little bit of a call stack here. `drupal_page_header()` calls `drupal_send_headers()` which calls `drupal_get_http_header()` to finally fetch the headers that it needs to send.
+
+Note that in this run, it just sends a couple default headers (`Expires` and `Cache-Control`), but the interesting part is that static caches are used throughout, and anything can call [`drupal_add_http_header()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_add_http_header/7) later on down the line, which will also call `drupal_send_headers()`. This allows you to append or replace existing headers before they actually get sent anywhere.
+
 
 ## 7. `DRUPAL_BOOTSTRAP_LANGUAGE`
 
+In this level, the [`drupal_language_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_language_initialize/7) function is called. This function only really does anything if we're talking about a multilingual site. It checks `drupal_multilingual()` which just returns `TRUE` if the list of languages is greater than 1, and false otherwise.
+
+If it's not a multilingual site, it cuts out then.
+
+If it is a multilingual site, then it initializes the system using `language_initialize()` for each of the language types that been configured, and then runs all `hook_language_init()` implementations. 
+
+This is a good time to note that the language system is complicated and confusing, with a web of "language types" (such as `LANGUAGE_TYPE_INTERFACE` and `LANGUAGE_TYPE_CONTENT`) and "language providers", and of course actual languages. It deserves a chapter of its own, so I'm not going to go into any more detail here.
+
 ## 8. `DRUPAL_BOOTSTRAP_FULL`
+
+And we have landed. Now that we already have the building blocks like a database and a session and configuration, we can add All Of The Other Things. And the [`_drupal_bootstrap_function()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/_drupal_bootstrap_full/7) does just that.
+
+### Requires a ton of files
+
+```php
+require_once DRUPAL_ROOT . '/' . variable_get('path_inc', 'includes/path.inc');
+require_once DRUPAL_ROOT . '/includes/theme.inc';
+require_once DRUPAL_ROOT . '/includes/pager.inc';
+require_once DRUPAL_ROOT . '/' . variable_get('menu_inc', 'includes/menu.inc');
+require_once DRUPAL_ROOT . '/includes/tablesort.inc';
+require_once DRUPAL_ROOT . '/includes/file.inc';
+require_once DRUPAL_ROOT . '/includes/unicode.inc';
+require_once DRUPAL_ROOT . '/includes/image.inc';
+require_once DRUPAL_ROOT . '/includes/form.inc';
+require_once DRUPAL_ROOT . '/includes/mail.inc';
+require_once DRUPAL_ROOT . '/includes/actions.inc';
+require_once DRUPAL_ROOT . '/includes/ajax.inc';
+require_once DRUPAL_ROOT . '/includes/token.inc';
+require_once DRUPAL_ROOT . '/includes/errors.inc';
+```
+
+All that stuff that we haven't needed yet but may need after this, we require here, just in case. That way, we're not having to load `ajax.inc` on the fly if we happen to be using AJAX later, or `mail.inc` on the fly if we happen to be sending an email.
+
+
+### Load all enabled modules
+
+The [`module_load_all(TRUE)`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_load_all/7) does exactly what you'd expect - grabs the name of every enabled module using `module_list()` and then runs `drupal_load()` on it to load it. There's also a static cache in this function so that it only runs once per request.
+
+### Registers stream wrappers
+
+The [`file_get_stream_wrappers()`](https://api.drupal.org/api/drupal/includes%21file.inc/function/file_get_stream_wrappers/7) has a lot of meat to it, but it's all details around a fairly simple task.
+
+At a high level, it's grabbing all stream wrappers using `hook_stream_wrappers()`, allowing the chance to alter them using `hook_stream_wrappers_alter()`, and then registering (or overriding) each of them using `stream_wrapper_register()`, which is a plain old PHP function. It then sticks the result in a static cache so that it only runs all of this once per request.
+
+### Initializes the path
+
+The [`drupal_path_initialize()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_path_initialize/7) function is called which just makes sure that `$_GET['q']` is setup (if it's not, then it sets it to the frontpage), and then runs it through [`drupal_get_normal_path()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_get_normal_path/7) to see if it's a path alias, and if so, replace it with the internal path. 
+
+This also gives modules a chance to alter the inboud URL. Before `drupal_get_normal_path()` returns the path, it calls all implementations of `hook_url_inbound_alter()` to do just that.
+
+### Sets and initializes the site theme
+
+```php
+menu_set_custom_theme();
+drupal_theme_initialize();
+```
+
+These two fairly innocent looking functions are NOT messing around. 
+
+The purpose of [`menu_set_custom_theme()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/menu_set_custom_theme/7) is to allow modules or theme callbacks to dynamically set the theme that should be used to render the current page. To do this, it  calls [`menu_get_custom_theme(TRUE)`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/menu_get_custom_theme/7), which is a bit scary looking, but doesn't do anything important besides that and saving the result to a static cache.
+
+After that, the [`drupal_theme_initialize()`](https://api.drupal.org/api/drupal/includes%21theme.inc/function/drupal_theme_initialize/7) comes along and goes to town.
+
+First, it just loads all themes using [`list_themes()`](https://api.drupal.org/api/drupal/includes%21theme.inc/function/list_themes/7), which is where the `.info` file for each theme gets parsed and the lists of CSS files, JS files, regions, etc., get populated.
+
+Secondly, it tries to find the theme to use by checking to see if the user has a custom theme set, and if not, falling back to the `theme_default` variable.
+
+```php
+$theme = !empty($user->theme) && drupal_theme_access($user->theme) ? 
+  $user->theme : variable_get('theme_default', 'bartik');
+```
+
+Then it checks to see if a different custom theme was chosen on the fly in the previous step (the `menu_set_custom_theme()` function), by running `menu_get_custom_theme()` (remember that static cache). If there was a custom theme returned, then it uses that, otherwise it keeps the default theme.
+
+```php
+$custom_theme = menu_get_custom_theme();
+$theme = !empty($custom_theme) ? $custom_theme : $theme;
+```
+
+Once it has firmly decided on what dang theme is going to render the dang page, it can move on to building a list of base themes or ancestor themes.
+
+```php
+$base_theme = array();
+$ancestor = $theme;
+while ($ancestor && isset($themes [$ancestor]->base_theme)) {
+  $ancestor = $themes [$ancestor]->base_theme;
+  $base_theme [] = $themes [$ancestor];
+}
+```
+
+It needs that list because it needs to initialize any ancestor themes along with the main theme, so that theme inheritance can work. So then it runs [`_drupal_theme_initialize`](https://api.drupal.org/api/drupal/includes%21theme.inc/function/_drupal_theme_initialize/7) on each of them, which adds the necessary CSS and JS, and then initializes the correct theme engine, if needed.
+
+After that, it resets the `drupal_alter` cache, because themes can have alter hooks, and we wouldn't want to ignore them becuase we had already built the cache by now.
+
+```
+drupal_static_reset('drupal_alter');
+```
+
+And finally, it adds some info to JS about the theme that's being used, so that if an AJAX request comes along later, it will know to use the same theme.
+
+```php
+$setting ['ajaxPageState'] = array(
+  'theme' => $theme_key,
+  'theme_token' => drupal_get_token($theme_key),
+);
+drupal_add_js($setting, 'setting');
+```
+
+### A couple other miscellaneous setup tasks
+
+- Detects string handling method using `unicode_check()`.
+- Undoes magic quotes using `fix_gpc_magic()`.
+- Ensures `mt_rand` is reseeded for security.
+- Runs all implementations of `hook_init()` at the very end.
+
+## Conclusion
+
+That's it. That's the entire bootstrap process. There are a lot of places that deserve some more depth, and we'll get there, but you should be feeling like you have a fairly good understanding of where and when things get set up while bootstrapping.
+
+Keep in mind this is only a small part of the page load process. Most of the really heavy lifting happens after this, so keep reading!
