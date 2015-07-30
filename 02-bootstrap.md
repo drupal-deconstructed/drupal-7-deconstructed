@@ -2,6 +2,8 @@
 
 So George's request for `/about-us` been handed to Drupal, and `index.php` is ready too bootstrap Drupal. What does that mean?
 
+## A quick summary
+
 At a code level, we're talking about the [`drupal_bootstrap`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_bootstrap/7) function, which lets you pass in a parameter to tell it which level of bootstrap you need. In almost all cases, we want a "full" bootstrap, which usually means "this is a regular page request, nothing weird, so just give me everything."
 
 What is "everything"? I'm glad you asked. All of the possible values for the parameter for `drupal_bootstrap()` are listed below. Note that they are run sequentially, meaning if you call it with `DRUPAL_BOOTSTRAP_CONFIGURATION` then it will only do that one (#1), but if you call it with `DRUPAL_BOOTSTRAP_SESSION` then it will do that one (#5) and all of the ones before it (#1-4). And since `DRUPAL_BOOTSTRAP_FULL` is last, calling it gives you everything in this list.
