@@ -141,13 +141,15 @@ It's confusing first of all because it happens in a function called [`_menu_tran
 
 To start, it needs to translate placeholders (i.e., "%" signs) in paths to the loaded entity if a load function exists for it. For example, if our path in `menu_router` is `node/%node` then this chunk of code will say "ok, I see `%node` as opposed to just `%`, therefore, I know I need to run `node_load()` on whatever is in that part of the URL, which in this case is `1234`. 
 
-So it runs [`_menu_load_objects()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_load_objects/7) to call the appropriate load function (in this case, we know automagically that it's `node_load` because we named the placeholder `%node`) as needed and, (assuming we don't get an access error or any other problem which would throw a 404) put the result back into the menu router item for later use. This is a very common place to hit an access denied, because the URL doesn't have access to whichever entity we're trying to load. For example, an anonymous user trying to view an unpublished node would fail at this step.
+To do this, it runs [`_menu_load_objects()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_load_objects/7) which calls the appropriate load function if there is one and, assuming we don't get an access error or a missing entity or anything else which would throw an error, put the result (i.e., the fully loaded entity) back into the menu router item for later use. 
 
-We've made it this far, and we have a loaded entity (remember that the `/about-us` page we're talking about is a node), but we're not in the clear yet. We know that the user can access any entities that were automatically loaded based on the URL, but we still haven't run the `access_callback` function given to us from the `menu_router` table. 
+As a side note, this is a very common place to hit an access denied, in cases where the user doesn't have access to whichever entity we're trying to load. For example, an anonymous user trying to view an unpublished node would fail at this step.
 
-That part happens via a call to [`_menu_check_access()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_check_access/7), which basically runs the function set in `access_callback` if one exists, otherwise it falls back to [`user_access()`](https://api.drupal.org/api/drupal/modules%21user%21user.module/function/user_access/7).
+So we've made it this far, and we have a loaded entity (remember that the `/about-us` page we're talking about is a node), but we're not in the clear yet. We still haven't run the `access_callback` function given to us from the `menu_router` table. 
 
-**And we have finally reached the end of `menu_get_item()`!
+That part happens via a call to [`_menu_check_access()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_check_access/7), which basically runs the function set in `access_callback` if one exists, otherwise it falls back to [`user_access()`](https://api.drupal.org/api/drupal/modules%21user%21user.module/function/user_access/7), and includes any defined `access_arguments`. The fallback to `user_access()` means that we can just pass in a permission as `access_arguments` completely and leave out `access_callback` in our `hook_menu()` and it works out just peachy, which is a nice little shortcut.
+
+**And we have finally reached the end of `menu_get_item()`! Hooray!**
 
 ## Step 6: Call the appropriate function for this path
 
