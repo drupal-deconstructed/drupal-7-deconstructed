@@ -1,6 +1,6 @@
 # Drupal 7 Deconstructed
 
-*A plain(ish) English description of how the big pieces of Drupal 7 do what they do.*
+*How Drupal works: a plain(ish) English guide*
 
 If you've ever wondered how Drupal works, then this book is for you.
 
@@ -27,5 +27,5 @@ If you want to contribute to this, you have a few options.
   <dd>Drupal 7 because, at the time of this writing, Drupal 7 still has more than a year of shelf life. Drupal 8 Deconstructed will need to be written too, though!</dd>
 
   <dt>What about deconstructing contrib?</dt>
-  <dd>I'd like to dive into how some of the more popular contrib modules work too, such as Views, Panels, CTools, etc., once the core chapters are complete.</dd>
+  <dd>I'd like to dive into how some of the more popular contrib modules work, such as Views, Panels, CTools, etc., once the core chapters are complete.</dd>
 </dl>
