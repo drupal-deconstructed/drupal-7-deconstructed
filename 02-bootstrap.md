@@ -66,7 +66,7 @@ drupal_settings_initialize();
 
 The [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function is super important, for exactly 2 reasons:
 
-1. It includes the all-important `settings.php` file which contains our databas connection info (which isn't used yet), among other things.
+1. It includes the all-important `settings.php` file which contains our database connection info (which isn't used yet), among other things.
 2. It creates many of our favorite global variables, such as `$cookie_domain`, `$conf`, `$is_https`, and more!
 
 And that's the end of the CONFIGURATION bootstrap. 1 down, 7 to go!
