@@ -86,7 +86,7 @@ foreach (variable_get('cache_backends', array()) as $include) {
 
 This bit of fanciness allows us to specify our own cache backend(s) instead of using Drupal's database cache. 
 
-This is most commonly used to support memcache, but someone could really go to town with this if they wanted, just by specifying (in the `$conf` array in `settings.php` an include file to use (such as `memcache.inc`) for whatever cache backend they're wanting to use.
+This is most commonly used to support memcache, but someone could really go to town with this if they wanted, just by specifying (in the `$conf` array in `settings.php`) an include file to use (such as `memcache.inc`) for whatever cache backend they're wanting to use.
 
 ### Checks to see if cache is enabled
 
