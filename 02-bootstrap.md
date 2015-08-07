@@ -385,7 +385,7 @@ At a high level, it's grabbing all stream wrappers using `hook_stream_wrappers()
 
 The [`drupal_path_initialize()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_path_initialize/7) function is called which just makes sure that `$_GET['q']` is setup (if it's not, then it sets it to the frontpage), and then runs it through [`drupal_get_normal_path()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_get_normal_path/7) to see if it's a path alias, and if so, replace it with the internal path. 
 
-This also gives modules a chance to alter the inboud URL. Before `drupal_get_normal_path()` returns the path, it calls all implementations of `hook_url_inbound_alter()` to do just that.
+This also gives modules a chance to alter the inbound URL. Before `drupal_get_normal_path()` returns the path, it calls all implementations of `hook_url_inbound_alter()` to do just that.
 
 ### Sets and initializes the site theme
 
