@@ -1,4 +1,4 @@
-# Drupal 7 Deconstructed: Part 3 - The Menu Router
+# The Menu Router
 
 Alright! Now we're getting somewhere! Here's what we have so far. We have our request to `/about-us` and we've already run through a full Drupal bootstrap, thanks to `index.php`.
 

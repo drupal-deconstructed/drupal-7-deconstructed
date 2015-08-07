@@ -1,4 +1,4 @@
-# Drupal 7 Deconstructed: Part 2 - The Bootstrap Process
+# The Bootstrap Process
 
 So George's request for `/about-us` been handed to Drupal, and `index.php` is ready to bootstrap Drupal. What does that mean?
 

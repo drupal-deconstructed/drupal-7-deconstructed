@@ -1,3 +1,0 @@
-# Drupal 7 Deconstructed: Part 5 - Users, Sessions, Roles, Permissions
-
-Coming soon...

@@ -1,4 +1,4 @@
-# Drupal 7 Deconstructed: Part 1 - The Request
+# The Request
 
 Have you ever wondered how Drupal does what it does? Good, me too. In this series of posts, I'm going to explain what Drupal is doing behind the scenes to perform its magic.
 

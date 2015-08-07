@@ -1,0 +1,3 @@
+# Translations and Internationalization
+
+Coming soon...

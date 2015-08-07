@@ -1,4 +1,4 @@
-# Drupal 7 Deconstructed: Part 4 - The Database
+# The Database System
 
 Uh oh. Drupal's database system is probably one of the least understood parts. While a decent Drupal developer might have a loose idea of how the menu router works or what happens during the bootstrap process, nobody seems to have any idea of how Drupal talks to the database.
 
