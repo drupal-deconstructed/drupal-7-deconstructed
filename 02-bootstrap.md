@@ -270,7 +270,7 @@ If you've never seen the [`session_set_save_handler()`](http://php.net/session_s
 What does Drupal actually do in those 6 handler functions? 
 
 - `_drupal_session_open()` and `_drupal_session_close()` both literally just `return TRUE;`.
-- `_drupal_session_read()` fetchs the session from the `sessions` table, and does a join on the `users` table to include the user data along with it.
+- `_drupal_session_read()` fetches the session from the `sessions` table, and does a join on the `users` table to include the user data along with it.
 - `_drupal_session_write()` checks to see if the session has been updated in the current page request or more than 180 seconds have passed since the last update, and if so, it gathers up session data and drops it into the `sessions` table with a `db_merge()`.
 - `_drupal_session_destroy()` just deletes the appropriate row from the `sessions` DB table, sets the global `$user` object to be the anonymous user, and deletes cookies.
 - `_drupal_session_garbage_collection()` deletes all sessions from the `sessions` table that are older than whatever the max lifetime is set to in PHP (i.e., whatever `session.gc_maxlifetime` is set to).
