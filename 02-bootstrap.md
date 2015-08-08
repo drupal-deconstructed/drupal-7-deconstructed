@@ -181,7 +181,7 @@ Nothing fancy. If we don't have anything in `$GLOBALS ['databases']` and we have
 
 This beautiful beautiful [`database.inc`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/7) file includes all of the database abstraction functions that we know and love, such as `db_query()` and `db_select()` and `db_update()`. 
 
-It also has holds the base `Database` and `DatabaseConnection` and `DatabaseTransaction` classes (among a bunch of others).
+It also holds the base `Database` and `DatabaseConnection` and `DatabaseTransaction` classes (among a bunch of others).
 
 It's a 3000+ line file, so it's out of scope for a discussion on bootstrapping, and we'll get back to "How Drupal Does Databases" in a later chapter.
 
@@ -249,7 +249,7 @@ Here's another one that you wouldn't expect to happen as part of bootstrapping v
 
 The `$_GET['destination']` parameter needs to be protected against open redirect attacks leading to other domains. So what we do here is to check to see if it's set to an external URL, and if so, we unset it. 
 
-The reason we have to wait for the variables bootstrap for this is that we need to call the [`url_is_external()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/url_is_external/7) function to do it, and that function a variable to store the list of allowed protocols.
+The reason we have to wait for the variables bootstrap for this is that we need to call the [`url_is_external()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/url_is_external/7) function to check the destination URL, and that function calls [`drupal_strip_dangerous_protocols()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_strip_dangerous_protocols/7) which has a variable to store the list of allowed protocols.
 
 ## 5. `DRUPAL_BOOTSTRAP_SESSION`
 
@@ -299,9 +299,6 @@ This part's tricky. Drupal lazily starts sessions at the end of the request, so 
 
 ```php
 session_id(drupal_random_key());
-$insecure_session_name = substr(session_name(), 1);
-$session_id = drupal_random_key();
-$_COOKIE[$insecure_session_name] = $session_id;
 ```
 
 I won't go in detail here since we're talking about the bootstrap, but at the end of the request, `drupal_page_footer()` or `drupal_exit()` (depending on which one is responsible for closing this particular request) will call [`drupal_session_commit()`](https://api.drupal.org/api/drupal/includes%21session.inc/function/drupal_session_commit/7), which checks to see if there's anything in $_SESSION that we need to save to the database, and will run `drupal_session_start()` if so.
