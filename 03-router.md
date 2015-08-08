@@ -10,7 +10,7 @@ If you want the nickel tour of the Drupal menu router (or you don't want to look
 
 First, the very last line of the `index.php` file kicks things off by telling the menu system to figure out what the request is asking for, and serve it. This happens by looking at the `menu_router` database table to see if there are any rows that match the current URL.
 
-Assuming we find a match (in this case, our `about-us` path has been converted during the bootstrap process to something like `node/1234`, which makes with `node/%` in the menu_router table), we call whatever function the `menu_router` table tells us to call.
+Assuming we find a match (in this case, our `about-us` path has been converted during the bootstrap process to something like `node/1234`, which matches `node/%` in the menu_router table), we call whatever function the `menu_router` table tells us to call.
 
 That function will be responsible for building the page content, and the rest is history (or, will be covered in other chapters).
 
@@ -18,7 +18,7 @@ Now, to dig a little deeper.
 
 ## Step 0. Fetching the system URL for a path alias
 
-This step 0 because it has already happened. Remember in the Bootstrap chapter that, during the `DRUPAL_BOOTSTRAP_FULL` phase, the [`drupal_path_initialize()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_path_initialize/7) function is called. That function just makes sure that `$_GET['q']` is set (if it's not, then it sets it to the frontpage URL). 
+We start with step 0 because it has already happened. Remember in the Bootstrap chapter that, during the `DRUPAL_BOOTSTRAP_FULL` phase, the [`drupal_path_initialize()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_path_initialize/7) function is called. That function just makes sure that `$_GET['q']` is set (if it's not, then it sets it to the frontpage URL). 
 
 Then, more importantly, it runs through [`drupal_get_normal_path()`](https://api.drupal.org/api/drupal/includes%21path.inc/function/drupal_get_normal_path/7) to see if we are looking at a path alias rather than an internal path, and if so, replaces it with the internal path that it's aliasing.
 
@@ -42,7 +42,7 @@ From here, we call the [`menu_get_item($path)`](https://api.drupal.org/api/drupa
 
 ## Step 2: Possibly rebuild the menu system
 
-The first interesting thing that function does is checks to see if we need to do a menu rebuild, and kicks one off if so.
+The first interesting thing that function does is check to see if we need to do a menu rebuild, and kicks one off if so.
 
 ```php
 if (variable_get('menu_rebuild_needed', FALSE) || !variable_get('menu_masks', array())) {
@@ -128,8 +128,8 @@ Before we can continue on, we need to give modules the ability to alter the menu
 ```php
 drupal_alter('menu_get_item', $router_item, $path, $original_map);
 ```
-    
-This differs from the more commonly used [`hook_menu_alter()`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_menu_alter/7) in that this is a run-time, as opposed to `hook_menu_alter()` which only runs when the menu system is being built, and doesn't run as part of a page request.
+
+This differs from the more commonly used [`hook_menu_alter()`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_menu_alter/7) in that this is at run-time, as opposed to `hook_menu_alter()` which only runs when the menu system is being built, and doesn't run as part of a page request.
 
 ## Step 5: Check for access to the router item
 
@@ -137,13 +137,13 @@ You guessed it! Still inside `menu_get_item()`.
 
 This part is more confusing than you may expect. 
 
-It's confusing first of all because it happens in a function called [`_menu_translate()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_translate/7) which in the case, means "translate" as in "translate placeholders in the URL to loaded entities (or other things), when needed". (It also translates the menu title to the appropriate language later in this same function, confusing things further).
+It's confusing first of all because it happens in a function called [`_menu_translate()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_translate/7) which means "translate" as in "translate placeholders in the URL to loaded entities (or other things), when needed". (It also translates the menu title to the appropriate language later in this same function, confusing things further).
 
 To start, it needs to translate placeholders (i.e., "%" signs) in paths to the loaded entity if a load function exists for it. For example, if our path in `menu_router` is `node/%node` then this chunk of code will say "ok, I see `%node` as opposed to just `%`, therefore, I know I need to run `node_load()` on whatever is in that part of the URL, which in this case is `1234`. 
 
-To do this, it runs [`_menu_load_objects()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_load_objects/7) which calls the appropriate load function if there is one and, assuming we don't get an access error or a missing entity or anything else which would throw an error, put the result (i.e., the fully loaded entity) back into the menu router item for later use. 
+To do this, it runs [`_menu_load_objects()`](https://api.drupal.org/api/drupal/includes%21menu.inc/function/_menu_load_objects/7) which calls the appropriate load function if there is one and, assuming we don't get an access error, a missing entity, or anything else which would cause a problem, put the result (i.e., the fully loaded entity) back into the menu router item for later use. 
 
-As a side note, this is a very common place to hit an access denied, in cases where the user doesn't have access to whichever entity we're trying to load. For example, an anonymous user trying to view an unpublished node would fail at this step.
+As a side note, this is a very common place to hit an _access denied_ page, in cases where the user doesn't have access to whichever entity we're trying to load. For example, an anonymous user trying to view an unpublished node would fail at this step.
 
 So we've made it this far, and we have a loaded entity (remember that the `/about-us` page we're talking about is a node), but we're not in the clear yet. We still haven't run the `access_callback` function given to us from the `menu_router` table. 
 
@@ -175,7 +175,7 @@ else {
 }
 ```
 
-Nice and simple. If we have access, include any given include file if needed, call whatever the `page_callback` is, and include any given `page_arguments`. Or, if we don't have access, then just throw an access denied.
+Nice and simple. If we have access, include any given include file if needed, call whatever the `page_callback` is, and include any given `page_arguments`. Or, if we don't have access, then just return the _access denied_ page.
 
 ## Step 7: Deliver the page
 
@@ -187,7 +187,6 @@ drupal_deliver_page($page_callback_result, $default_delivery_callback);
 ```
 
 Pretty, right? Yeah, not so much, but it definitely gets the job done.
-
 
 ## What about (re)building the menu router?
 
