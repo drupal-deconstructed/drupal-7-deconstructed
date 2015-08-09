@@ -82,7 +82,7 @@ But wait, there's more! If you dive into that `openConnection()` call, you're ta
 
 You may (or may not) remember that that global variable was created in the `DRUPAL_BOOTSTRAP_CONFIGURATION` phase of the bootstrap process, courtesy of the [`drupal_settings_initialize`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function.
 
-Anyways, the end result if that, back in the `Database::openConnection()` function, we have a fully populated `$databaseInfo` variable, and we pass that into the constructor for the driver class we're using. 
+Anyways, as a result of the `Database::openConnection()` function, we have a fully populated `$databaseInfo` variable, and we pass that into the constructor for the driver class we're using. 
 
 ```php
 if (!$driver = self::$databaseInfo[$key][$target]['driver']) {
@@ -131,3 +131,4 @@ The class we use here will be `DatabaseStatementBase`, because that variable get
 ```php
 protected $statementClass = 'DatabaseStatementBase';
 ```
+
