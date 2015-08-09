@@ -54,9 +54,9 @@ That said, it does have this nugget:
 $_GET ['q'] = request_path();
 ```
 
-It might not look like much, but this is what makes Clean URLs work. We always need `$_GET['q']` to be set to the current path because `$_GET['q']` is used all over the place. If you have Clean URLs disabled, then that happens by default, because your URLs look like `yoursite.com/?q=about-us`. So the line of code above will call [`request_path`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/request_path/7), which sees that `$_GET['q']` already exists, and returns it directly. 
+It might not look like much, but this is what makes Clean URLs work. We always need `$_GET['q']` to be set to the current path because `$_GET['q']` is used all over the place. If you have Clean URLs disabled, then that happens by default, because your URLs look like `yoursite.com/?q=about-us`. So the line of code above will call [`request_path()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/request_path/7), which sees that `$_GET['q']` already exists, and returns it directly. 
 
-But if you have Clean URLs enabled (you do, right?), and your URLs look like `yoursite.com/about-us`, then `$_GET['q']` is empty by default, and that just won't do. To fix that, it gets populated with the value of [`request_path`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/request_path/7), which basically just cleans up the result of `$_SERVER['REQUEST_URI']` (i.e., removes query strings as well as script filenames such as `index.php` or `cron.php`) and returns that.
+But if you have Clean URLs enabled (you do, right?), and your URLs look like `yoursite.com/about-us`, then `$_GET['q']` is empty by default, and that just won't do. To fix that, it gets populated with the value of [`request_path()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/request_path/7), which basically just cleans up the result of `$_SERVER['REQUEST_URI']` (i.e., removes query strings as well as script filenames such as `index.php` or `cron.php`) and returns that.
 
 ### Starts a timer
 
