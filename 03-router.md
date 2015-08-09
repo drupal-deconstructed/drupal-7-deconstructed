@@ -225,3 +225,27 @@ Since `hook_menu()` lets you place menu items in actual user facing navigation m
 This little guy handles a lot of tough work. For each menu router entry, it'll add it to the appropriate menu, or update it if it's already there, or move it from one menu to another if that changed, or delete it if needed. 
 
 It's also smart enough to remove any items from menus that don't have matching router items anymore (so you don't have orphan menu items), or which have changed types from `MENU_NORMAL_ITEM` to another type. And to top it all off, it deletes them from the bottom up, meaning it starts with the ones with the greatest depth, so that it doesn't have to do as much re-parenting as it would if it deleted them in the opposite or a random order.
+
+### When does this happen?
+
+That's all well and good, but what would trigger this to happen? How does Drupal know when it's time to run rebuild the menu router?
+
+Turns out that lots of things trigger that, but it's a bit complicated because there are two ways it can be triggered.
+
+1. The `menu_rebuild()` function can be called directly, of course.
+2. The `menu_rebuild_needed` variable can be set to `TRUE` which will trigger a call to `menu_rebuild()` the next time the `menu_get_item()` is called (see the *Possibly rebuild the menu system* section of this chapter to see how that happens).
+
+There are a couple obvious things that trigger menu rebuilds. One of the most common is  [`drupal_flush_all_caches()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_flush_all_caches/7) function. Besides being called whenever you manually flush caches (which is about 9000 times a day if you're anything like me), it also gets called by [`system_modules_submit()`](https://api.drupal.org/api/drupal/modules%21system%21system.admin.inc/function/system_modules_submit/7) when enabling a new module, so that the module's `hook_menu()` or `hook_menu_alter()` implementations (or other menu related hooks) can be respected.
+
+Besides that one, there are a few other places that call `menu_rebuild()` directly. Most notably:
+
+- [`node_type_form_submit()`](https://api.drupal.org/api/drupal/modules%21node%21content_types.inc/function/node_type_form_submit/7) - for adding tabs and paths for a content type that is being created or updated
+- [`node_type_delete_confirm_submit()`](https://api.drupal.org/api/drupal/modules%21node%21content_types.inc/function/node_type_delete_confirm_submit/7) - for doing the exact opposite: deleting all that stuff.
+- [`theme_enable()`](https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_enable/7) and [`theme_disable()`](https://api.drupal.org/api/drupal/includes%21theme.inc/function/theme_disable/7) - for adding or removing tabs and paths related to a theme that is being enabled or disabled
+
+As far as places which set the `menu_rebuild_needed` variable to `TRUE`, achieving the same effect, we have a couple notable ones:
+
+- [`field_ui_field_attach_create_bundle()`](https://api.drupal.org/api/drupal/modules%21field_ui%21field_ui.module/function/field_ui_field_attach_create_bundle/7) - if we're adding a new bundle to a fieldable entity type, then we need to add menu item tabs for it
+- [`image_system_file_system_settings_submit()`](https://api.drupal.org/api/drupal/modules%21image%21image.module/function/image_system_file_system_settings_submit/7) - if we're saving the File System configuration form and update the public files path setting, then we need to rebuild the menu to reflect the new path.
+
+Those are the big ones as far as core is concerned. If you search the standard Drupal site's codebase for `menu_rebuild` then you'll find a bunch more, but most of them belong to either contrib modules or automated test cases. Runtime core code does a relatively good job of only doing a full menu rebuild when it's absolutely necessary.
