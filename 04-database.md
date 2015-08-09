@@ -96,7 +96,7 @@ $new_connection = new $driver_class(self::$databaseInfo[$key][$target]);
 
 From here, the driver class that we've specified will do some driver-specific stuff along with calling its parent class's constructor. Its parent class happens to be `DatabaseConnection`, which we've already talked about, and we know that `DatabaseConnection`'s constructor calls its own parent's constructor, which is `PDO`, which initiates the connection.
 
-And we have our connection. To summarize: any given query will call `getConnection()` which calls `openConnection` which, after finding our DB connection info from the `global $databases` variable, calls the constructor for our DB driver's class. That constructor calls `DatabaseConnection`'s constructor which calls `PDO`'s constructor, which creates our connection.
+And we have our connection. To summarize: any given query will call `getConnection()` which calls `openConnection()` which, after finding our DB connection info from the `global $databases` variable, calls the constructor for our DB driver's class. That constructor calls `DatabaseConnection`'s constructor which calls `PDO`'s constructor, which creates our connection.
 
 ### A query object is created
 
