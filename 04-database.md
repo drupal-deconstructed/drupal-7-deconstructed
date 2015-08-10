@@ -1,5 +1,7 @@
 # The Database System
 
+**Note: This chapter isn't complete yet!**
+
 Brace yourselves, this one's a doozy. Drupal's database system is probably one of the least understood parts. While a decent Drupal developer might have a loose idea of how the menu router works or what happens during the bootstrap process, nobody seems to have any idea of how Drupal talks to the database.
 
 Lucky for us, it's not actually that bad. Promise!
