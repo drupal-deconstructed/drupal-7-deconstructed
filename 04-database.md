@@ -45,7 +45,7 @@ And then we have the classes for specific query types, which live in `includes/d
 * [`DeleteQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/DeleteQuery/7) - extends the `Query` class for `DELETE` queries
 * [`MergeQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/MergeQuery/7) - extends the `Query` class for `MERGE` queries
 * [`TruncateQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/TruncateQuery/7) - extends the `Query` class for `TRUNCATE` queries
-* [`SelectQuery`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/class/SelectQuery/7) - extends the `Query` class for `TRUNCATE` queries. Note that this one is special enough to exist in its own file (`includes/database/select.inc`) with its own `interface` to go along with it.
+* [`SelectQuery`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/class/SelectQuery/7) - extends the `Query` class for `SELECT` queries. Note that this one is special enough to exist in its own file (`includes/database/select.inc`) with its own `interface` to go along with it.
 
 And to close the loop, since this is supposed to be a summary after all, here's the general process (at a VERY high level, even though it may not seem like it):
 
