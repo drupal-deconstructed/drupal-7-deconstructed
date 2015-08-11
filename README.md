@@ -28,4 +28,7 @@ If you want to contribute to this, you have a few options.
 
   <dt>What about deconstructing contrib?</dt>
   <dd>I'd like to dive into how some of the more popular contrib modules work, such as Views, Panels, CTools, etc., once the core chapters are complete.</dd>
+  
+  <dt>Where will my wildest dreams come true?</dt>
+  <dd>DrupalCamp Asheville 2015</dd>
 </dl>
