@@ -80,4 +80,39 @@ The end result is the same - you're just running `drupal_cron_run()` directly in
 
 ## Actually doing something
 
-By now, we've reached `drupal_cron_run()` one way or another, so we're ready to actually run the dang cron.
+By now, we've reached [`drupal_cron_run()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_cron_run/7) one way or another, so we're ready to actually run the dang cron.
+
+Here's everything that function does, from start to finish.
+
+### Ignore request cancellations
+
+```php
+@ignore_user_abort(TRUE);
+```
+
+We don't want to stop the cron run if the request gets canceled, because cron really needs to run start to finish to be safe. That line does exactly that; it tells PHP that if the user aborts, then we will keep on trucking.
+
+### Temporarily destroy the session
+
+```php
+$original_session_saving = drupal_save_session();
+drupal_save_session(FALSE);
+$original_user = $GLOBALS['user'];
+$GLOBALS['user'] = drupal_anonymous_user();
+```
+
+Here, we remove the user's session and make him or her anonymous, while saving the original session and user to an object so that we can restore it in a bit.
+
+This allows us to prevent any session information from being saved as cron runs. Otherwise, as a random example, a node that gets created during cron run could be auto-assigned to the current user, which doesn't make any sense.
+
+It also allows us to enforce consistent permissions by ensuring that the user will always be an anonymous user. Otherwise, if users in different roles sometimes ran cron, they could theoretically see different results depending on their permissions, which are supposed to be irrelevant to cron.
+
+### Set a time limit
+
+```php
+drupal_set_time_limit(240);
+```
+
+The [`drupal_set_time_limit()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_set_time_limit/7) is basically just a wrapper around PHP's [`set_time_limit()`](http://php.net/set_time_limit) function to ensure that that function exists before attempting to run it.
+
+Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error.
