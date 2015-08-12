@@ -50,7 +50,7 @@ $cron_key = drupal_random_key();
 variable_set('cron_key', $cron_key);
 ``` 
 
-Requiring that key servers as a layer of protection against some wahoos pounding your cron or running it when you don't want it to be run, just by requesting `cron.php`. 
+Requiring that key serves as a layer of protection against some wahoos pounding your cron or running it when you don't want it to be run, just by requesting `cron.php`. 
 
 It then checks to make sure the site isn't in maintenance mode. 
 
