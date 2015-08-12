@@ -1,5 +1,7 @@
 # Cron
 
+**Note: This chapter isn't complete yet!**
+
 Who hasn't battled with cron at one point or another? It's a rite of passage for a Drupal developer. 
 
 In this chapter, we'll see what exactly triggers a cron run, what it does, and why it does it.
@@ -116,3 +118,5 @@ drupal_set_time_limit(240);
 The [`drupal_set_time_limit()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_set_time_limit/7) is basically just a wrapper around PHP's [`set_time_limit()`](http://php.net/set_time_limit) function to ensure that that function exists before attempting to run it.
 
 Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error.
+
+### MORE STUFF GOES HERE
