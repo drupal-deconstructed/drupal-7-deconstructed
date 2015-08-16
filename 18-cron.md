@@ -92,7 +92,7 @@ Here's everything that function does, from start to finish.
 @ignore_user_abort(TRUE);
 ```
 
-We don't want to stop the cron run if the request gets canceled, because cron really needs to run start to finish to be safe. That line does exactly that; it tells PHP that if the user aborts, then we will keep on trucking.
+We don't want to stop the cron run if the request gets canceled, because cron really needs to run start to finish to be safe. That line does exactly that; it tells PHP that if the user aborts, then we will keep on trucking. [ignore_user_abort()](http://php.net/manual/en/function.ignore-user-abort.php) is a native PHP function that prevents PHP from aborting if the client disconnects. Prepending it with the [@ symbol](http://php.net/manual/en/language.operators.errorcontrol.php) causes any error messages raised by the ignore function itself to be ignored.
 
 ### Temporarily destroy the session
 
@@ -117,6 +117,6 @@ drupal_set_time_limit(240);
 
 The [`drupal_set_time_limit()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_set_time_limit/7) is basically just a wrapper around PHP's [`set_time_limit()`](http://php.net/set_time_limit) function to ensure that that function exists before attempting to run it.
 
-Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error.
+Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error. If you need to run tasks that might exceed the four minute limit, those should be added via the Queue API instead.
 
 ### MORE STUFF GOES HERE
