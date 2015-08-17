@@ -168,9 +168,38 @@ And with an open connection ripe and ready for the picking, we can move on and d
 
 ### A query object is created
 
+Remember that this is the line of code we're looking at, from the `db_select()` function.
+
+```php
+return Database::getConnection($options['target'])->select($table, $alias, $options);
+```
+
+Now that `getConnection()` is complete and has given us a DB connection to use, we can move on to the second part of that statement.
+
+The [`select()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aselect/7) function is also very simple:
+
+```php
+$class = $this->getDriverClass('SelectQuery', array('query.inc', 'select.inc'));
+return new $class($table, $alias, $this, $options);
+```
+
+This just gives the DB drivers a chance to override the default query classes to add or alter their behavior so that they play nice with the database in use. For example, PostgreSQL has to have its own version of SelectQuery to change the way `orderBy()` and `orderRandom()` behave.
+
+All this is doing behind the scenes is checking to see if there is a driver-specific `SelectQuery` class, and returning that if so, otherwise it just returns the default. To do this, it just looks for a class named `SelectQuery_<drivername>` such as `SelectQuery_mysql`. In our case, it won't find one, because `SelectQuery_mysql` doesn't exist. But if it were an `INSERT` query, it would find `InsertQuery_mysql`, which does exist. Or if we were using SQLite, then it would find `SelectQuery_sqlite` which also exists.
+
+Query objects, like our `SelectQuery`, are really complicated little things. They extend the `Query` class but they don't really get much from it. Most of the logic belongs to the individual query classes themselves. Our `SelectQuery` has functions for all of the things you might want to do to it, such as:
+
+- `SelectQuery::having()`
+- `SelectQuery::isNotNull()`
+- `SelectQuery::where()`
+
+All of the things you can chain onto `db_select()` functions to write complicated queries end up running functions in the `SelectQuery` class. 
+
 ### A condition is added
 
 ### The query is executed
+
+At the end of it all, the giant `SelectQuery` object with its attributes all set and configured is run through a great big long `__toString()` function which converts that hefty object into a regular old prepared statement, which looks a lot more like the raw SQL that our database expects.
 
 ### The results are returned
 
