@@ -193,9 +193,62 @@ Query objects, like our `SelectQuery`, are really complicated little things. The
 - `SelectQuery::isNotNull()`
 - `SelectQuery::where()`
 
-All of the things you can chain onto `db_select()` functions to write complicated queries end up running functions in the `SelectQuery` class. 
+All of the things you can chain onto `db_select()` functions to write complicated queries end up running functions in the `SelectQuery` class. And all of those functions basically just alter our current instantiated `SelectQuery` object by altering its attributes.
+
+I know this all seems very vague and confusing. I'm trying not to go into TOO much detail because there is so much to cover here that this chapter could quickly take over the whole book. But as a specific example, let's see what happens when we walk through our original query, given what we know about Query objects.
+
+```php
+$result = db_select('node', 'n')
+  ->fields('n')
+  ->condition('nid', $node->nid, '=')
+  ->execute()
+  ->fetchAssoc();
+```
+
+Remember that the first line creates the connection and the `SelectQuery` object. We've already covered that.
+
+The second line calls the [`SelectQuery::fields()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Afields/7) function which looks like this: 
+
+```php
+public function fields($table_alias, array $fields = array()) {
+
+  if ($fields) {
+    foreach ($fields as $field) {
+      // We don't care what alias was assigned.
+      $this->addField($table_alias, $field);
+    }
+  }
+  else {
+    // We want all fields from this table.
+    $this->tables[$table_alias]['all_fields'] = TRUE;
+  }
+
+  return $this;
+}
+```
+
+See what I mean about just altering the `SelectQuery` object? It either runs [`SelectQuery::addField()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddField/7) on each field if there are specific fields listed, or it sets `all_fields` to `TRUE` if not. Remember, all of this is just so that by the time we're ready to execute the query, we have a fully built query object that we can convert into a SQL statement. More on that in a bit.
+
+In the meantime, the 3rd line (the one with `condition()` happens to be important enough that it deserves its own section.
 
 ### A condition is added
+
+The third line calls `condition()` which is yet another function belonging to `SelectQuery`, but it's a little more involved than most of the others. Here's what it looks like:
+
+```php
+public function condition($field, $value = NULL, $operator = NULL) {
+  $this->where->condition($field, $value, $operator);
+  return $this;
+}
+```
+
+The tricky part is that `$this->where` is actually an instance of the `DatabaseCondition` class (yes, conditions get their own class - are you overwhelmed yet?). This happens in the `__construct()` function of `SelectQuery`, like so:
+
+```php
+$this->where = new DatabaseCondition('AND');
+```
+
+But it turns out that what really ends up happening is that `$this->where->conditions()` ends up as an array of conditions, which gets compiled along with the rest of the query when we're ready to execute it.
 
 ### The query is executed
 
@@ -213,8 +266,6 @@ What do they do? Walk through MySQL? Or possibly SQLite to be simpler?
 
 # TODO:
 
-- Talk about DatabaseStatementPrefetch
-- Talk about all the db_* functions in database.inc
 - Talk about logging (setLogger and getLogger)
 - Talk about table prefixing
 - Talk about query errors/exceptions
