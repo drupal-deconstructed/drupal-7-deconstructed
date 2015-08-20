@@ -248,13 +248,127 @@ The tricky part is that `$this->where` is actually an instance of the `DatabaseC
 $this->where = new DatabaseCondition('AND');
 ```
 
-But it turns out that what really ends up happening is that `$this->where->conditions()` ends up as an array of conditions, which gets compiled along with the rest of the query when we're ready to execute it.
+What ends up happening as a result of that is that `$this->where->conditions()` becomes an array of conditions in the following format:
+
+```php
+array(
+  'field' => $field,
+  'value' => $value,
+  'operator' => $operator,
+);
+```
+
+Then, at execution time, that gets compiled along with the rest of the query into raw SQL.
 
 ### The query is executed
 
-At the end of it all, the giant `SelectQuery` object with its attributes all set and configured is run through a great big long `__toString()` function which converts that hefty object into a regular old prepared statement, which looks a lot more like the raw SQL that our database expects.
+Don't forget the original code that kicked all of this off:
+
+```php
+$result = db_select('node', 'n')
+  ->fields('n')
+  ->condition('nid', $node->nid, '=')
+  ->execute()
+  ->fetchAssoc();
+```
+
+We're done with those first 3 lines, so now it's time to run `execute()`, which is yet another function of the `SelectQuery` class. It looks like this:
+
+```php
+public function execute() {
+  // If validation fails, simply return NULL.
+  // Note that validation routines in preExecute() may throw exceptions instead.
+  if (!$this->preExecute()) {
+    return NULL;
+  }
+
+  $args = $this->getArguments();
+  return $this->connection->query((string) $this, $args, $this->queryOptions);
+}
+```
+
+The [`SelectQuery::preExecute()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3ApreExecute/7) function does a few very important things:
+
+- If the query has any tags added by the [`addTag()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddTag/7) function (which we don't in our example) then it runs the alter hook(s) specified by those tags.
+- It also runs `preExecute()` on any defined subqueries
+- Finally, it runs `preExecute()` on any defined unions
+
+With `preExecute()` complete, we move onto the [`getArguments()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AgetArguments/7). This is the part where `WHERE` and `HAVING` clauses are compiled from objects to string SQL syntax, along with any `UNION`s or subqueries. 
+
+And finally, we run the dang query! Note that that last line, the one that runs `query()`, casts `$this` (i.e., the query object) to a string, which by default PHP behavior means that it runs its `__toString()` function.
+
+Lucky for us, `SelectQuery` has a great big [`__toString()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3A__toString/7) function which converts that hefty object into a regular old prepared statement, which looks a lot more like the raw SQL that our database expects. That `__toString()` function doesn't really do anything magical - it's just a matter of asking our query object if it has this or that, and adding the appropriate SQL to the string. For example, here's how `GROUP BY` clauses are added:
+
+```php
+// GROUP BY
+if ($this->group) {
+  $query .= "\nGROUP BY " . implode(', ', $this->group);
+}
+```
+
+See? Not so bad.
+
+At the end of `__toString()` we have a fully built SQL string which can be passed on to run the query, by calling the [`query()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aquery/7) method of the `DatabaseConnection` class.
+
+This is the code from that function that ends up doing the magic: 
+
+```php
+$this->expandArguments($query, $args);
+$stmt = $this->prepareQuery($query);
+$stmt->execute($args, $options);
+```
+
+That first [`expandArguments()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3AexpandArguments/7) line is mostly just housekeeping. For any arguments that are arrays, such as if we had something like `->condition('nid', $nids_array)`, it will convert the array to a comma delimited list.
+
+The second line, the one that runs [`prepareQuery()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3AprepareQuery/7) isn't very fun either. It calls the [`prefixTables()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3AprefixTables/7) which literally just runs a `str_replace` to add in table prefixes if you're using them. If not, it just removes the curly brackets around table names in the query and moves on.
+
+And we have arrived at the last line. Remember that we're working with the `DatabaseConnection` class which extends from the core `PDO` class. This last line just calls the `execute()` function of the core `PDO` class, which takes over and runs the query against our database.
 
 ### The results are returned
+
+Our query has run, folks! We're ready to see what it returned! It's been a long journey but we're not done yet!
+
+The next bit of code from the [`DatabaseConnection::query()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aquery/7) function is important:
+
+```php
+switch ($options['return']) {
+  case Database::RETURN_STATEMENT:
+    return $stmt;
+  case Database::RETURN_AFFECTED:
+    return $stmt->rowCount();
+  case Database::RETURN_INSERT_ID:
+    return $this->lastInsertId();
+  case Database::RETURN_NULL:
+    return;
+  default:
+    throw new PDOException('Invalid return directive: ' . $options['return']);
+}
+```
+
+This is our Drupal decides what exactly to return. 
+
+- `SELECT` queries just return `$stmt`
+- `UPDATE`, `DELETE`, `MERGE`, and `TRUNCATE` queries return the count of affected rows
+- `INSERT` queries return the ID of the last inserted item
+- You'll almost never see `RETURN_NULL` set - it happens as an edge case for `INSERT` queries running against PostgreSQL or if manually specified in the code that runs the query.
+
+Let's take a peek back at our original code:
+
+```php
+$result = db_select('node', 'n')
+  ->fields('n')
+  ->condition('nid', $node->nid, '=')
+  ->execute()
+  ->fetchAssoc();
+```
+
+All of the above happens as part of `execute()`. Now that that's all complete, we can fetch the results in whatever format we want them. We used `fetchAssoc()`, but we could have easily used any of the other methods defined in our [`DatabaseStatementBase`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/class/DatabaseStatementBase/7) class (which, remember, extends `PDOStatement`), such as:
+
+- [`fetchAssoc`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAssoc/7) - returns the next row as an associative array
+- [`fetchAllAssoc`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) - returns the entire result set as an associative array keyed by the given field
+- [`fetchAllKeyed`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllKeyed/7) - returns a single associative array (only useful for two-column result sets)
+- [`fetchCol`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchCol/7) - returns an entire single column of the result set as an indexed array
+- [`fetchField`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchField/7) - returns a single field from the next record of a result set
 
 ## Schema and structure
 
