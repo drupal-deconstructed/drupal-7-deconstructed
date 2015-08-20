@@ -400,11 +400,64 @@ return $this->fetchAll(PDO::FETCH_COLUMN, $index);
 
 See? Nothing very special there. Thankfully, this is one part of Drupal's database layer that isn't very tough to grasp.
 
-## Schema and structure
+## Database schema
 
-All that is well and good, but how does the database table structure get built in the first place? How does Drupal know which tables and fields and indexes to create?
+All that is well and good, but how does the database table structure get built in the first place? How does Drupal know which tables and fields and indexes to create? 
 
-The answer lies in the `DatabaseSchema` class.
+For those who may not be aware, this is a good time to note that modules primarily define their table structure inside a `hook_schema()` implementation in `modulename.install`. Let's walk through exactly how that gets called on a module (in our case, we'll say the `node` module) and what Drupal does with it.
+
+When a module is enabled, the [`module_enable`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_enable/7) runs this little chunk of code (which I have removed comments from):
+
+```php
+if (drupal_get_installed_schema_version($module, TRUE) == SCHEMA_UNINSTALLED) {
+  drupal_install_schema($module);
+  $versions = drupal_get_schema_versions($module);
+  $version = $versions ? max($versions) : SCHEMA_INSTALLED;
+  drupal_set_installed_schema_version($module, $version);
+  module_invoke($module, 'install');
+}
+```
+
+In plain English, this code checks to see if the module has ever been installed before, and if not (meaning the `schema_version` column in the `system` table for this module is equal to `SCHEMA_UNINSTALLED` which is `-1`), it installs the schema, then saves the current schema version to the system table.
+
+*Note that the above code only runs if the module has never been installed. If it was previously installed, then disabled, and is being re-enabled again, that code does not run at all. Therefore, any schema changes which need to be made after the module was previously installed will have to happen in `hook_update_N` and will run the next time database updates are applied.*
+
+Obviously, the magic happens in [`drupal_install_schema($module)`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_install_schema/7). Let's take a look at what's going on there.
+
+```php
+function drupal_install_schema($module) {
+  $schema = drupal_get_schema_unprocessed($module);
+  _drupal_schema_initialize($schema, $module, FALSE);
+
+  foreach ($schema as $name => $table) {
+    db_create_table($name, $table);
+  }
+}
+```
+
+Let's take it line by line. 
+
+First, we run [`drupal_get_schema_unprocessed($module)`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_get_schema_unprocessed/7). This extremely simple function literally just loads the module's install file, invokes its `hook_schema()` implementation, and returns that result, without really doing any other processing on it. Not bad.
+
+This gives us `$schema`, which is an array of tables, which themselves are arrays of properties.
+
+Next, we run [`_drupal_schema_initialize()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/_drupal_schema_initialize/7) which is also fairly simple. It just loops through the `$schema` array and makes sure that each table has `$table['module']` and `$table['name']` set, and sets it if needed.
+
+And finally, we just loop through the `$schema` array and run [`db_create_table()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/db_create_table/7) on each table inside it. This ends up running [`DatabaseSchema::createTable()`](https://api.drupal.org/api/drupal/includes%21database%21schema.inc/function/DatabaseSchema%3A%3AcreateTable/7) on the table, which looks like this:
+
+```php
+public function createTable($name, $table) {
+  if ($this->tableExists($name)) {
+    throw new DatabaseSchemaObjectExistsException(t('Table @name already exists.', array('@name' => $name)));
+  }
+  $statements = $this->createTableSql($name, $table);
+  foreach ($statements as $statement) {
+    $this->connection->query($statement);
+  }
+}
+```
+
+We check to make sure the table doesn't exist. If not, we create the raw SQL from the table array, and then run the SQL. The only thing here worth diving into is the `createTableSql()` function which is driver-specific (meaning there is a separate version of it depending on which database driver you're using). Here's [the MySQL version](https://api.drupal.org/api/drupal/includes!database!mysql!schema.inc/function/DatabaseSchema_mysql%3A%3AcreateTableSql/7) of it.
 
 ## Database drivers
 
