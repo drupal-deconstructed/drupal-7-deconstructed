@@ -362,17 +362,49 @@ $result = db_select('node', 'n')
   ->fetchAssoc();
 ```
 
-All of the above happens as part of `execute()`. Now that that's all complete, we can fetch the results in whatever format we want them. We used `fetchAssoc()`, but we could have easily used any of the other methods defined in our [`DatabaseStatementBase`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/class/DatabaseStatementBase/7) class (which, remember, extends `PDOStatement`), such as:
+All of the stuff we just talked about happens as part of `execute()`. Now that that's all complete, we can fetch the results in whatever format we want them. 
 
-- [`fetchAssoc`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAssoc/7) - returns the next row as an associative array
-- [`fetchAllAssoc`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) - returns the entire result set as an associative array keyed by the given field
-- [`fetchAllKeyed`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllKeyed/7) - returns a single associative array (only useful for two-column result sets)
-- [`fetchCol`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchCol/7) - returns an entire single column of the result set as an indexed array
-- [`fetchField`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchField/7) - returns a single field from the next record of a result set
+We used `fetchAssoc()`, but we could have easily used any of the other methods defined in our [`DatabaseStatementBase`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/class/DatabaseStatementBase/7) class (which, remember, extends `PDOStatement`), such as:
+
+- [`fetchAssoc()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAssoc/7) - returns the next row as an associative array
+- [`fetchAllAssoc()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) - returns the entire result set as an associative array keyed by the given field
+- [`fetchAllKeyed()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllKeyed/7) - returns a single associative array (only useful for two-column result sets)
+- [`fetchCol()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchCol/7) - returns an entire single column of the result set as an indexed array
+- [`fetchField()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchField/7) - returns a single field from the next record of a result set
+
+Or, we can also choose from these, which come straight from the `PDOStatement` class, so Drupal can use them out of the box:
+
+- [`fetch()`](http://php.net/manual/en/pdostatement.fetch.php) - returns the next row from the result set
+- [`fetchObject()`](http://php.net/manual/en/pdostatement.fetchobject.php) - returns the next row as an object
+- [`fetchAll()`](http://php.net/manual/en/pdostatement.fetchall.php) - returns an array containing all rows of a result set
+- [`fetchColumn()`](http://php.net/manual/en/pdostatement.fetchcolumn.php) - returns a single column (you probably should never use this since Drupal's `fetchField()` exists which calls this behind the scenes)
+
+There's not much to say about how these `fetch*` functions do what they do. The implementation of the `PDO` functions is outside of the scope of this book, and the ones that exist in Drupal basically each just call the `PDO` functions with a certain set of parameters, or a little bit of processing.
+
+As an example of "a little bit of processing", the `fetchAllAssoc()` function just looks like this:
+
+```php
+foreach ($this as $record) {
+  $record_key = is_object($record) ? $record->$key : $record [$key];
+  $return [$record_key] = $record;
+}
+
+return $return;
+```
+
+And as an example of "just calling a `PDO` function", we can look at what `fetchCol()` does:
+
+```php
+return $this->fetchAll(PDO::FETCH_COLUMN, $index);
+```
+
+See? Nothing very special there. Thankfully, this is one part of Drupal's database layer that isn't very tough to grasp.
 
 ## Schema and structure
 
-`DatabaseSchema` class.
+All that is well and good, but how does the database table structure get built in the first place? How does Drupal know which tables and fields and indexes to create?
+
+The answer lies in the `DatabaseSchema` class.
 
 ## Database drivers
 
