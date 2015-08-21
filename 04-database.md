@@ -1,29 +1,27 @@
 # The Database System
 
-**Note: This chapter isn't complete yet!**
-
-Brace yourselves, this one's a doozy. Drupal's database system is probably one of the least understood parts. While a decent Drupal developer might have a loose idea of how the menu router works or what happens during the bootstrap process, nobody seems to have any idea of how Drupal talks to the database.
-
-Lucky for us, it's not actually that bad. Promise!
+Brace yourselves, this one's a doozy. Drupal's database system is probably one of the least understood parts, and perhaps one of the toughest to understand.
 
 ## Some background information
 
 Before we jump into the code, let's take a quick step back.
 
-If we're trying to explain how Drupal talks to databases, we first need to define the major building blocks in general terms. Here are the three big pieces that need to exist before we have a useful system.
+If we're trying to explain how Drupal talks to databases, we first need to define the major building blocks in general terms. Here are the three big pieces that need to exist before we have a useful database abstraction layer.
 
-- The connection. How is a connection to the database first established?
+- The connection. How is a connection established, maintained, and closed?
 - The query. How is a query built and sent to the database?
-- The result. How are query results read and understood?
+- The result. How are query results returned in a format which we can use?
 
-Thankfully, [PDO](http://php.net/manual/en/intro.pdo.php) ("PHP Data Objects") exists for PHP, which has stock solutions for each of those three.
+Thankfully, [PDO](http://php.net/manual/en/intro.pdo.php) ("PHP Data Objects") exists for PHP, which has stock solutions for each of those three. There are two classes here that we need to be aware of.
 
-- The `PDO` class handles creating, maintaining, and closing the connection between PHP and whatever database you're using. 
-- The `PDOStatement` class handles querying the database (using "prepared statements" which is where the name comes from) as well as returning results.
+- The `PDO` class handles creating, maintaining, and closing **the connection** between PHP and whatever database you're using. 
+- The `PDOStatement` class handles **querying the database** (using "prepared statements" which is where the name comes from) as well as **returning results**.
 
-That's it. Those are the two major pieces of PDO. There is also a `PDOException` class and some drivers for different databases, but those are just details.
+That's it. Those are the two major pieces of PDO, and you can see that each of our three major pieces in the list above above are addressed in one of those two classes.
 
-Congratulations, you know enough about PDO to understand what Drupal is doing. In fact, a lot of PDO will look familiar to you if you've done some querying with Drupal. For example, `fetchAll()` and `rowCount()` are core functions of the `PDOStatement` class.
+*Note: there are more `PDO` classes than just those two. There is also a `PDOException` class and some driver classes for different databases, for example, but those aren't important for the purposes of our understanding right now.*
+
+Congratulations, you know enough about PDO to understand how Drupal is using it! In fact, a lot of PDO will look familiar to you if you've done some querying with Drupal. For example, `fetchAll()` and `rowCount()` are core functions of the `PDOStatement` class.
 
 ## A (not so) quick summary
 
@@ -31,7 +29,7 @@ With that out of the way, let's talk about what Drupal's doing. This one's a bit
 
 The bird's eye view is that Drupal's database system is not much more than some extensions on top of PDO. Drupal has some classes which extend from the core PDO classes to add support for advanced features (table prefixing is the most obvious example) and fancy helper functions, but at the end of the day it's all just dressing on top of PDO.
 
-Let's start with a quick rundown of the major classes we'll see. Note that this isn't an exhaustive list of all DB-related classes in Drupal, but it's enough to get you the big picture.
+Let's start with a quick rundown of the major classes in use. Note that this isn't an exhaustive list of all DB-related classes in Drupal, but it's enough to get you the big picture.
 
 Here are the big three, all of which live along with a few others in `includes/database/database.inc`:
 
@@ -47,18 +45,19 @@ And then we have the classes for specific query types, which live in `includes/d
 * [`DeleteQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/DeleteQuery/7) - extends the `Query` class for `DELETE` queries
 * [`MergeQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/MergeQuery/7) - extends the `Query` class for `MERGE` queries
 * [`TruncateQuery`](https://api.drupal.org/api/drupal/includes%21database%21query.inc/class/TruncateQuery/7) - extends the `Query` class for `TRUNCATE` queries
-* [`SelectQuery`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/class/SelectQuery/7) - extends the `Query` class for `SELECT` queries. Note that this one is special enough to exist in its own file (`includes/database/select.inc`) with its own `interface` to go along with it.
+* [`SelectQuery`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/class/SelectQuery/7) - extends the `Query` class for `SELECT` queries. *Note that this one is special enough to exist in its own file (`includes/database/select.inc`) with its own `interface` to go along with it.*
 
 And to close the loop, since this is supposed to be a summary after all, here's the general process (at a VERY high level, even though it may not seem like it):
 
 1. A query function such as [`db_select()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/db_select/7) is called when a query is being requested.
-2. That function will call the [`getConnection()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AgetConnection/7) method of the `Database` class which will fetch the DB driver and connection info.
-3. Once we have the connection info, we can instantiate the driver-specific DB class, such as [`DatabaseConnection_mysql`](https://api.drupal.org/api/drupal/includes%21database%21mysql%21database.inc/class/DatabaseConnection_mysql/7) and pass in that info.
-4. Our `DatabaseConnection_mysql` DB class's constructor will call its parent (i.e., `DatabaseConnection`) constructor which calls its own parent (i.e., `PDO`) constructor, which creates and returns the connection
-5. Back in the `db_select()` function with a connection in hand, we can use chaining to instantiate the `SelectQuery` class on top of it and build the query object
-6. The [`execute()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Aexecute/7) method of the `SelectQuery` class runs, which ends up running the [`query()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aquery/7) method of the `DatabaseConnection` class
+2. That function will call the [`getConnection()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AgetConnection/7) method of the `Database` class which will fetch the DB driver and connection info from `settings.php`.
+3. Once we have the connection info, we can instantiate the database driver class for our chosen database, such as [`DatabaseConnection_mysql`](https://api.drupal.org/api/drupal/includes%21database%21mysql%21database.inc/class/DatabaseConnection_mysql/7), and hand it our connection info.
+4. The driver class constructor function will call the class's parent constructor (i.e., `DatabaseConnection`'s constructor) which calls its own parent's constructor (i.e., `PDO`'s constructor), which creates and returns the connection.
+5. Back in the `db_select()` function with a connection in hand, we can use function chaining to instantiate the `SelectQuery` class on top of it and build the query object.
+6. Any other functions chained after our original `db_select()`, such as `condition()` or `range()` or `orderBy()`, will be functions inside our query class (i.e., `SelectQuery`) and will alter the instantiated query object's attributes.
+6. The [`execute()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Aexecute/7) method of the `SelectQuery` class runs, which converts our query object to a `SQL` string, and runs it through [`query()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aquery/7) method of the `DatabaseConnection` class
 7. That ends up running the [`execute()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3Aexecute/7) method of the `DatabaseStatementBase` class
-8. Finally, that ends up running the `execute()` method if its parent class, which is `PDOStatement`, which actually does run the query against the target database.
+8. Finally, *that* function runs the `execute()` method if its parent class, which is `PDOStatement`, which actually executes the query against the target database.
 9. Our query has run, and we can fetch results using, for example, `fetchAll()` (which comes straight from `PDOStatement` or [`fetchAllAssoc()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) (which is a nicety provided by `DatabaseStatementBase`).
 
 To detailed? Ok fine, here it is at an EVEN HIGHER level:
@@ -77,7 +76,7 @@ Rather than going function by function on the hundreds of database-related funct
 
 ### We kick off a query
 
-For George's request to `about-us`, a bunch of queries are going to run, and the vast majority of them are going to be `SELECT` queries, so we'll use one of those as our example. Let's see what happens when this runs (assuming `$node` is the node currently being viewed).
+For George's request to `about-us`, a bunch of queries are going to run, and the vast majority of them are going to be `SELECT` queries, so we'll use one of those as our example. Let's see what happens when this very typical looking query runs (assuming `$node` is the node currently being viewed).
 
 ```php
 $result = db_select('node', 'n')
@@ -121,7 +120,7 @@ And all of that in one convenient little chained method call!
 
 ### A connection is established 
 
-Let's dig in! Starting at the beginning, we're calling [`db_select`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/db_select/7), which is a very simple function.
+Let's dig in! Starting at the beginning, we're calling [`db_select()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/db_select/7), which is a very simple function.
 
 ```php
 function db_select($table, $alias = NULL, array $options = array()) {
@@ -132,11 +131,11 @@ function db_select($table, $alias = NULL, array $options = array()) {
 }
 ```
 
-So basically, use the target database unless otherwise specified, then grab a connection using `getConnection()`, and run `select()` on it.
+So basically, use the target database unless otherwise specified, then grab a connection using [`getConnection`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AgetConnection/7), and run [`select()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aselect/7) on it.
 
 First things first, we need to connect to a database before we can do anything useful. Notice that Drupal doesn't just open a connection for the heck of it during the database bootstrap. No connections are opened until they're actually needed for a query. Here's what happens when we're ready for that.
 
-Firstly, each possible query function (in our case, `db_select()`, but just as true for `db_update()`, `db_insert()`, etc.) includes a call to `Database::getConnection()` before calling the actual query. We're calling `db_select()` so we get this:
+Firstly, each possible query function (in our case, `db_select()`, but just as true for `db_update()`, `db_insert()`, etc.) includes a call to the `getConnection()` function of the `Database` class before calling the actual query. We're calling `db_select()` so we get this (copied from above):
 
 ```php
 return Database::getConnection($options['target'])->select($table, $alias, $options);
@@ -144,9 +143,9 @@ return Database::getConnection($options['target'])->select($table, $alias, $opti
 
 If you dive into that [`Database::getConnection`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AgetConnection/7) call, it'll take you to [`Database::openConnection()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AopenConnection/7). 
 
-But wait, there's more! If you dive into that `openConnection()` call, you're taken to [`Database::parseConnectionInfo()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AparseConnectionInfo/7). This very important function populates the `Database::$databaseInfo` variable with the information from the `global $databases` variable. 
+But wait, there's more! If you dive into that `openConnection()` call, you're taken to [`Database::parseConnectionInfo()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/Database%3A%3AparseConnectionInfo/7). This very important function populates the `$databaseInfo` variable with the information from the `global $databases` variable. 
 
-You may (or may not) remember that that global variable was created in the `DRUPAL_BOOTSTRAP_CONFIGURATION` phase of the bootstrap process, courtesy of the [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function.
+You may or may not remember that that global variable was created in the `DRUPAL_BOOTSTRAP_CONFIGURATION` phase of the bootstrap process, courtesy of the [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function.
 
 Anyways, as a result of the `Database::openConnection()` function, we have a fully populated `$databaseInfo` variable, and we pass that into the constructor for the driver class we're using. 
 
@@ -160,7 +159,9 @@ require_once DRUPAL_ROOT . '/includes/database/' . $driver . '/database.inc';
 $new_connection = new $driver_class(self::$databaseInfo[$key][$target]);
 ```
 
-From here, the driver class that we've just instantiated will do some driver-specific stuff (more to come on that later) along with calling its parent class's constructor. Its parent class happens to be `DatabaseConnection`, which we've already talked about as being extended from the core PHP `PDO` class, which creates our connection when instantiated.
+All we're really doing here is grabbing the driver name from `$databaseInfo`, and using that to try to instantiate a class for it, which should be named `DatabaseConnection_<driver>` and should be located in '/includes/database/<driver>/database.inc'. If found, we pass in the database info so that the driver class can make use of it.
+
+From here, the driver class that we've just instantiated will do some driver-specific stuff (whatever is needed to prepare a connection for whatever database driver you're using) along with calling its parent class's constructor. Its parent class happens to be `DatabaseConnection`, which we've already talked about as being extended from the core PHP `PDO` class, which creates our connection when instantiated.
 
 And we have our connection. To summarize: any given query will call `getConnection()` which calls `openConnection()` which, after finding our DB connection info from the `global $databases` variable, calls the constructor for our DB driver's class. That constructor calls `DatabaseConnection`'s constructor which calls `PDO`'s constructor, which creates our connection. 
 
@@ -185,17 +186,18 @@ return new $class($table, $alias, $this, $options);
 
 This just gives the DB drivers a chance to override the default query classes to add or alter their behavior so that they play nice with the database in use. For example, PostgreSQL has to have its own version of SelectQuery to change the way `orderBy()` and `orderRandom()` behave.
 
-All this is doing behind the scenes is checking to see if there is a driver-specific `SelectQuery` class, and returning that if so, otherwise it just returns the default. To do this, it just looks for a class named `SelectQuery_<drivername>` such as `SelectQuery_mysql`. In our case, it won't find one, because `SelectQuery_mysql` doesn't exist. But if it were an `INSERT` query, it would find `InsertQuery_mysql`, which does exist. Or if we were using SQLite, then it would find `SelectQuery_sqlite` which also exists.
+All this is doing behind the scenes is checking to see if there is a driver-specific `SelectQuery` class, and returning that if so, otherwise it just returns the default. To do this, it just looks for a class named `SelectQuery_<drivername>` such as `SelectQuery_mysql`. In our case, it won't find one, because `SelectQuery_mysql` doesn't exist. But if it were an `INSERT` query, it *would* find `InsertQuery_mysql`, which does exist. Or if we were using SQLite, then it would find `SelectQuery_sqlite`, which also exists.
 
-Query objects, like our `SelectQuery`, are really complicated little things. They extend the `Query` class but they don't really get much from it. Most of the logic belongs to the individual query classes themselves. Our `SelectQuery` has functions for all of the things you might want to do to it, such as:
+Query objects, such as our `SelectQuery`, are really complicated little things. They extend the `Query` class but they don't really get much from it. Most of the logic belongs to the individual query classes themselves. Our `SelectQuery` has functions for all of the things you might want to do to it, such as:
 
 - `SelectQuery::having()`
 - `SelectQuery::isNotNull()`
 - `SelectQuery::where()`
+- Anything else you might chain onto a call to `db_select()`
 
-All of the things you can chain onto `db_select()` functions to write complicated queries end up running functions in the `SelectQuery` class. And all of those functions basically just alter our current instantiated `SelectQuery` object by altering its attributes.
+All of the things you can chain onto `db_select()` functions to write complicated queries end up running functions defined in the `SelectQuery` class. And all of those functions basically just alter our current instantiated `SelectQuery` object by updating its attributes.
 
-I know this all seems very vague and confusing. I'm trying not to go into TOO much detail because there is so much to cover here that this chapter could quickly take over the whole book. But as a specific example, let's see what happens when we walk through our original query, given what we know about Query objects.
+I know this all seems very vague and confusing. As a specific example, let's see what happens when we walk through our original query, given what we know about Query objects.
 
 ```php
 $result = db_select('node', 'n')
@@ -207,7 +209,7 @@ $result = db_select('node', 'n')
 
 Remember that the first line creates the connection and the `SelectQuery` object. We've already covered that.
 
-The second line calls the [`SelectQuery::fields()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Afields/7) function which looks like this: 
+The second line calls the [`SelectQuery::fields()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Afields/7) (remember, all chained functions are defined in the class for the query object) function which looks like this: 
 
 ```php
 public function fields($table_alias, array $fields = array()) {
@@ -242,13 +244,13 @@ public function condition($field, $value = NULL, $operator = NULL) {
 }
 ```
 
-The tricky part is that `$this->where` is actually an instance of the `DatabaseCondition` class (yes, conditions get their own class - are you overwhelmed yet?). This happens in the `__construct()` function of `SelectQuery`, like so:
+The tricky part is that `$this->where` is actually an instance of the `DatabaseCondition` class (yes, conditions get their own class - are you overwhelmed yet?). This instantiation happened in the [`__construct()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3A__construct/7) function of `SelectQuery`, like so:
 
 ```php
 $this->where = new DatabaseCondition('AND');
 ```
 
-What ends up happening as a result of that is that `$this->where->conditions()` becomes an array of conditions in the following format:
+As a result, `$this->where->conditions()` becomes an array of conditions in the following format:
 
 ```php
 array(
@@ -259,6 +261,8 @@ array(
 ```
 
 Then, at execution time, that gets compiled along with the rest of the query into raw SQL.
+
+So, by adding a condition to our query using the chained `condition()` function, what it's really doing is calling the `condition()` function of the `DatabaseCondition` class, which adds an array to the list of conditions on our query object.
 
 ### The query is executed
 
@@ -347,7 +351,7 @@ switch ($options['return']) {
 
 This is our Drupal decides what exactly to return. 
 
-- `SELECT` queries just return `$stmt`
+- `SELECT` queries just return the results object as given to us by PDO. 
 - `UPDATE`, `DELETE`, `MERGE`, and `TRUNCATE` queries return the count of affected rows
 - `INSERT` queries return the ID of the last inserted item
 - You'll almost never see `RETURN_NULL` set - it happens as an edge case for `INSERT` queries running against PostgreSQL or if manually specified in the code that runs the query.
@@ -392,13 +396,15 @@ foreach ($this as $record) {
 return $return;
 ```
 
-And as an example of "just calling a `PDO` function", we can look at what `fetchCol()` does:
+And as an example of "just calling a `PDO` function", we can look at what `fetchCol()` does internally:
 
 ```php
 return $this->fetchAll(PDO::FETCH_COLUMN, $index);
 ```
 
 See? Nothing very special there. Thankfully, this is one part of Drupal's database layer that isn't very tough to grasp.
+
+And thus we have queried the database and fetched our results, and we're ready to do something useful with them. The database layer's work is done, for that particular query.
 
 ## Database schema
 
@@ -457,14 +463,8 @@ public function createTable($name, $table) {
 }
 ```
 
-We check to make sure the table doesn't exist. If not, we create the raw SQL from the table array, and then run the SQL. The only thing here worth diving into is the `createTableSql()` function which is driver-specific (meaning there is a separate version of it depending on which database driver you're using). Here's [the MySQL version](https://api.drupal.org/api/drupal/includes!database!mysql!schema.inc/function/DatabaseSchema_mysql%3A%3AcreateTableSql/7) of it.
+Basically, we just check to make sure the table doesn't already exist, then create it if so.
 
-## Database drivers
+The `createTableSql()` is probably the only interesting part of that snippet. It's a driver-specific function, meaning there is a separate version of it depending on which database driver you're using. Here's [the MySQL version](https://api.drupal.org/api/drupal/includes!database!mysql!schema.inc/function/DatabaseSchema_mysql%3A%3AcreateTableSql/7) of it, if you'd like to take a peek. 
 
-What do they do? Walk through MySQL? Or possibly SQLite to be simpler?
-
-# TODO:
-
-- Talk about logging (setLogger and getLogger)
-- Talk about table prefixing
-- Talk about query errors/exceptions
+No matter which driver you're using, however, the idea is the same. We use the `createTableSql()` function to create the raw SQL for the `CREATE TABLE` statement based on the table array, and then run the SQL to. The function creates a string for the `CREATE TABLE` statement, then loops through each of the defined fields and calls `createFieldSql()` (another driver-specific function) on each of them, adding the result to the SQL string. At the end of the function, we should have a fully built `CREATE TABLE` statement complete with all defined fields and their options, ready to run.
