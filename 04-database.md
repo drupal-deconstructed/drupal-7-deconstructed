@@ -58,7 +58,7 @@ And to close the loop, since this is supposed to be a summary after all, here's 
 6. The [`execute()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3Aexecute/7) method of the `SelectQuery` class runs, which converts our query object to a `SQL` string, and runs it through [`query()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseConnection%3A%3Aquery/7) method of the `DatabaseConnection` class
 7. That ends up running the [`execute()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3Aexecute/7) method of the `DatabaseStatementBase` class
 8. Finally, *that* function runs the `execute()` method if its parent class, which is `PDOStatement`, which actually executes the query against the target database.
-9. Our query has run, and we can fetch results using, for example, `fetchAll()` (which comes straight from `PDOStatement`) or [`fetchAllAssoc()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) (which is a nicety provided by `DatabaseStatementBase`).
+9. Our query has run, and we can fetch results using one of many `fetch*()` functions provided by `PDOStatement` and `DatabaseStatementBase`.
 
 To detailed? Ok fine, here it is at an EVEN HIGHER level:
 
