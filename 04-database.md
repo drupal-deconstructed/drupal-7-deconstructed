@@ -159,7 +159,7 @@ require_once DRUPAL_ROOT . '/includes/database/' . $driver . '/database.inc';
 $new_connection = new $driver_class(self::$databaseInfo[$key][$target]);
 ```
 
-All we're really doing here is grabbing the driver name from `$databaseInfo`, and using that to try to instantiate a class for it, which should be named `DatabaseConnection_<driver>` and should be located in '/includes/database/<driver>/database.inc'. If found, we pass in the database info so that the driver class can make use of it.
+All we're really doing here is grabbing the driver name from `$databaseInfo`, and using that to try to instantiate a class for it, which should be named `DatabaseConnection_<driver>` and should be located in `/includes/database/<driver>/database.inc`. If found, we pass in the database info so that the driver class can make use of it.
 
 From here, the driver class that we've just instantiated will do some driver-specific stuff (whatever is needed to prepare a connection for whatever database driver you're using) along with calling its parent class's constructor. Its parent class happens to be `DatabaseConnection`, which we've already talked about as being extended from the core PHP `PDO` class, which creates our connection when instantiated.
 
