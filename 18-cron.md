@@ -1,7 +1,5 @@
 # Cron
 
-**Note: This chapter isn't complete yet!**
-
 Who hasn't battled with cron at one point or another? It's a rite of passage for a Drupal developer. 
 
 In this chapter, we'll see what exactly triggers a cron run, what it does, and why it does it.
@@ -117,6 +115,104 @@ drupal_set_time_limit(240);
 
 The [`drupal_set_time_limit()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_set_time_limit/7) is basically just a wrapper around PHP's [`set_time_limit()`](http://php.net/set_time_limit) function to ensure that that function exists before attempting to run it.
 
-Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error. If you need to run tasks that might exceed the four minute limit, those should be added via the Queue API instead.
+Setting the time limit to 240 here means cron will run for up to 4 minutes before deciding that things are taking too long and throwing a fatal error. If you need to run tasks that might exceed the four minute limit, those should be added via the Queue API instead. 
 
-### MORE STUFF GOES HERE
+### Acquire a lock
+
+We obviously don't want to run cron if it's already running, so we do this:
+
+```php
+if (!lock_acquire('cron', 240.0)) {
+  watchdog('cron', 'Attempting to re-run cron while it is already running.', array(), WATCHDOG_WARNING);
+}
+else {
+  // Code for running cron is here
+}
+```
+
+### Look for regular cron jobs and start them
+
+This is the part that actually does the work. We just need to look for all implementations of [`hook_cron()`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_cron/7) and run them all, but it's important to be careful that if one of them throws an exception, the rest of them should still be allowed to run.
+
+Here's the code for that:
+
+```php
+foreach (module_implements('cron') as $module) {
+  try {
+    module_invoke($module, 'cron');
+  }
+  catch (Exception $e) {
+    watchdog_exception('cron', $e);
+  }
+}
+```
+
+### Wrap things up
+
+With all `hook_cron()` implementations successfully having run, we can close things out. This means setting a variable showing when cron last completed, adding a debug message to watchdog, and releasing the aforementioned lock.
+
+```php
+variable_set('cron_last', REQUEST_TIME);
+watchdog('cron', 'Cron run completed.', array(), WATCHDOG_NOTICE);
+lock_release('cron');
+```
+
+So that is the end of what you might call the "regular" cron system, but Drupal has a neat feature for longer running cron jobs as well, and now is the time to kick that off.
+
+### Look for cron queues and run them
+
+It's a perhaps little known feature of Drupal that you can tell the cron system about a custom queue callback for long running tasks that can't be trusted to complete in the 240 seconds allowed by regular implementations of `hook_cron()`. "Queue" here refers to [`DrupalQueue`](https://api.drupal.org/api/drupal/modules%21system%21system.queue.inc/group/queue/7), a system for queueing items for later processing, which we will talk about in another chapter.
+
+This is the code that sets that up:
+
+```php
+$queues = module_invoke_all('cron_queue_info');
+drupal_alter('cron_queue_info', $queues);
+```
+
+So we're just running all implementations of [`hook_cron_queue_info()`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_cron_queue_info/7) and then running all implementations of [`hook_cron_queue_info_alter()`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_cron_queue_info_alter/7) to gather up any registered cron queues and allow altering them before running.
+
+And then a little bit later, this part creates the queues:
+
+```php
+foreach ($queues as $queue_name => $info) {
+   DrupalQueue::get($queue_name)->createQueue();
+}
+```
+
+And then finally, a bit later (but still in [`drupal_cron_run()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_cron_run/7)), we process the queues, making sure to skip any that have asked not to run on cron.
+
+```php
+foreach ($queues as $queue_name => $info) {
+  if (!empty($info['skip on cron'])) {
+    continue;
+  }
+  $function = $info['worker callback'];
+  $end = time() + (isset($info['time']) ? $info['time'] : 15);
+  $queue = DrupalQueue::get($queue_name);
+  while (time() < $end && ($item = $queue->claimItem())) {
+    try {
+      $function($item->data);
+      $queue->deleteItem($item);
+    }
+    catch (Exception $e) {
+      watchdog_exception('cron', $e);
+    }
+  }
+}
+```
+
+All that's doing is looping through the queue and running each item until it runs out of time, which defaults to 15 seconds but can be set to anything.
+
+The aggregator module makes use of this for pulling in feeds, which can be a very time consuming process, but that's the only part of core that uses it.
+
+### Restore the user session
+
+Now that regular cron and cron queues have run, we're completely done in [`drupal_cron_run()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_cron_run/7). But before we can close it out, we need to put back the user session that we took away at the beginning.
+
+```php
+$GLOBALS['user'] = $original_user;
+drupal_save_session($original_session_saving);
+```
+
+And we're done! Yay, cron! A very useful and surprisingly simple system.
