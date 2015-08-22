@@ -18,7 +18,8 @@
 * [Performance](16-performance.md)
 * [Mail](17-mail.md)
 * [Cron](18-cron.md)
-* [Batch](19-batch.md)
-* [Translation](20-translation.md)
-* [Install/Update](21-install-update.md)
+* [Queue](19-queue.md)
+* [Batch](20-batch.md)
+* [Translation](21-translation.md)
+* [Install/Update](22-install-update.md)
 
