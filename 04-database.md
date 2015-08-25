@@ -349,7 +349,7 @@ switch ($options['return']) {
 }
 ```
 
-This is our Drupal decides what exactly to return. 
+This is when our Drupal decides what exactly to return. 
 
 - `SELECT` queries just return the results object as given to us by PDO. 
 - `UPDATE`, `DELETE`, `MERGE`, and `TRUNCATE` queries return the count of affected rows
