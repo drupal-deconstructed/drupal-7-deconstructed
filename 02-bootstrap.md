@@ -1,6 +1,6 @@
 # The Bootstrap Process
 
-So George's request for `/about-us` been handed to Drupal, and `index.php` is ready to bootstrap Drupal. What does that mean?
+So George's request for `/about-us` has been handed to Drupal, and `index.php` is ready to bootstrap Drupal. What does that mean?
 
 ## A quick summary
 
