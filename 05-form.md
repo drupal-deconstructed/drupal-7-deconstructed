@@ -194,10 +194,61 @@ Whether we grabbed the form from cache or built it ourselves, we need to process
 drupal_process_form($form_id, $form, $form_state);
 ```
 
-This is yet another big important function, and it does a few key things:
+The [`drupal_process_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_process_form/7) function is really the heart of the form API. This is where the form gets assembled, validated, and submitted.
 
-### Call element `#process` functions
-### Populate `#value` with user input
+Let's take each of those 3 phases one by one.
+
+### Build the form elements
+
+Yes, I know this is confusing, because we've already "built" the form by calling its form builder function to grab the form array. What's happening here is different. The `drupal_process_form()` function calls [`form_builder()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_builder/7). This recursive function cycles through the form tree from top to bottom, and for each element, does the following:
+
+#### Populate `#value` with user input
+
+https://api.drupal.org/api/drupal/includes%21form.inc/function/_form_builder_handle_input_element/7
+
+#### Call element `#process` functions
+
+Elements can contain `#process` callback functions, which get called after user input has been added to `#value`, but before `form_builder()` processes the element it's working on. This allows for code to dynamically add child elements, set additional properties, or implement special logic.
+
+It's important to note that `#process` calls are made in "preorder traversal", meaning they are called for the parents before their children.
+
+If a form element has a `#process` function defined, then it gets called here, like so: 
+
+```php
+if (isset($element ['#process']) && !$element ['#processed']) {
+  foreach ($element ['#process'] as $process) {
+    $element = $process($element, $form_state, $form_state ['complete form']);
+  }
+  $element ['#processed'] = TRUE;
+}
+```
+
+#### Recursively build child elements
+
+Now that `#process`	has run for an element, we're ready to process that element, and that means doing a bunch of things, such as:
+
+- Denying access to child elements if the parent has `#access` set to FALSE
+- Inherit `#disabled` and `#allow_focus` from parent elements
+- Assign a decimal placeholder weight to child elements to preserve order
+- A few other less important things
+
+And then finally, and most importantly, we end up running `form_builder()` on the current element. This is obviously a recursive function call, since we're already inside of `form_builder()`, so this is how child elements get built and processed.
+
+#### Call element `#after_build` functions
+
+Any defined `#after_build` callbacks are run after `form_builder()` is done processing the element it's working on.
+
+In contract with `#process`, `#after_build` calls are made in "postorder traversal", meaning they're called for the child elements first, then the parent elements.
+
+```php
+if (isset($element ['#after_build']) && !isset($element ['#after_build_done'])) {
+  foreach ($element ['#after_build'] as $function) {
+    $element = $function($element, $form_state);
+  }
+  $element ['#after_build_done'] = TRUE;
+}
+```
+
 ### Add validation and submission handlers
 ### Deal with multistep forms
 ### Cache form and form state if possible
