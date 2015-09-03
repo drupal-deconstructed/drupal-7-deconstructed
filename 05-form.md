@@ -204,7 +204,18 @@ Yes, I know this is confusing, because we've already "built" the form by calling
 
 #### Populate `#value` with user input
 
-https://api.drupal.org/api/drupal/includes%21form.inc/function/_form_builder_handle_input_element/7
+For each element of the form, if the element is an input (as opposed to a hidden or markup element), then we need to populate it with a `#value` if one exists. For example, if we're reloading the form with validation errors, we need to prepopulate the previously entered values in the process.
+
+```php
+// Handle input elements.
+if (!empty($element ['#input'])) {
+  _form_builder_handle_input_element($form_id, $element, $form_state);
+}
+```
+
+The [`_form_builder_handle_input_element()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/_form_builder_handle_input_element/7) function is long (due to the comments) and somewhat scary looking, but its main purposes are assigning a `#name` to nested fields, and assigning a `#value` if one exists in `$form_state['input']`. 
+
+It also does a few other things, such as setting `$form_state['triggering_element']` which tells us which submit button was clicked if the form was submitted, and running any defined `#value_callback` properties for dynamically setting values.
 
 #### Call element `#process` functions
 
@@ -249,6 +260,46 @@ if (isset($element ['#after_build']) && !isset($element ['#after_build_done'])) 
 }
 ```
 
-### Add validation and submission handlers
+And that wraps things up for `form_builder()`. Again, it handles a few other details as well, but that's the gist.
+
+### Validate the form input (if it exists)
+
+Back in [`drupal_process_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_process_form/7), it's time to validate the form, if there's a submission to validate. 
+
+```php
+if ($form_state ['process_input']) {
+  drupal_validate_form($form_id, $form, $form_state);
+  
+  // HANDLING SUBMISSIONS AND OTHER STUFF GOES HERE (SEE BELOW)
+}
+```
+
+Where does `$form_state['process_input']` get set? That happens back in the `form_builder()` function, if either `$form_state['input']` or `$form_state['programmed']` are non-empty. In other words, if there is user input, or we're submitting the form programmatically, then we set `$form_state['process_input']` to TRUE, which flags it for validation and submission.
+
+Let's see what actually happens in [`drupal_validate_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_validate_form/7).
+
+### Submit the form input (if it exists)
+
+Coming soon...
+
 ### Deal with multistep forms
+
+Coming soon...
+
 ### Cache form and form state if possible
+
+With everything else done, and assuming we haven't redirected away from the form after a submission, we can cache the form if appropriate. Here's the code:
+
+```php
+if (!$form_state ['rebuild'] && $form_state ['cache'] && empty($form_state ['no_cache'])) {
+  form_set_cache($form ['#build_id'], $unprocessed_form, $form_state);
+}
+```
+
+Nothing to it! Note that we only cache if we haven't specifically told the form to rebuild or to avoid caching.
+
+## Rendering the form
+
+I know what you're thinking. How does the form actually get displayed? How does this giant array get converted to a set of `<input>` and `<form>` and `<select>` tags? 
+
+Well, the end result of all of this form building work is a [render array](https://www.drupal.org/node/930760). Converting render arrays to markup to be displayed to end users is whole new ball of wax, and we'll talk about that in the Render chapter.
