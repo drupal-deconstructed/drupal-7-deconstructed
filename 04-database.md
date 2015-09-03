@@ -349,7 +349,7 @@ switch ($options['return']) {
 }
 ```
 
-This is our Drupal decides what exactly to return. 
+This is when our Drupal decides what exactly to return. 
 
 - `SELECT` queries just return the results object as given to us by PDO. 
 - `UPDATE`, `DELETE`, `MERGE`, and `TRUNCATE` queries return the count of affected rows
@@ -426,7 +426,7 @@ if (drupal_get_installed_schema_version($module, TRUE) == SCHEMA_UNINSTALLED) {
 
 In plain English, this code checks to see if the module has ever been installed before, and if not (meaning the `schema_version` column in the `system` table for this module is equal to `SCHEMA_UNINSTALLED` which is `-1`), it installs the schema, then saves the current schema version to the system table.
 
-*Note that the above code only runs if the module has never been installed. If it was previously installed, then disabled, and is being re-enabled again, that code does not run at all. Therefore, any schema changes which need to be made after the module was previously installed will have to happen in `hook_update_N` and will run the next time database updates are applied.*
+*Note that the above code only runs if the module has never been installed. If it was previously installed, then disabled, and is being re-enabled again, that code does not run at all. Therefore, any schema changes which need to be made after the module was previously installed will have to happen in [`hook_update_N`](https://api.drupal.org/api/drupal/modules%21system%21system.api.php/function/hook_update_N/7) and will run the next time database updates are applied.*
 
 Obviously, the magic happens in [`drupal_install_schema($module)`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_install_schema/7). Let's take a look at what's going on there.
 
