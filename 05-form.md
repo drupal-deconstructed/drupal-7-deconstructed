@@ -453,9 +453,30 @@ Any defined batch operations are gathered up using `batch_get()` and processed h
 
 #### Redirect the form
 
-The [`drupal_redirect_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_redirect_form/7) function is called at this point. If `$form_state['redirect']` is defined, then it just does a simple `drupal_goto()` to it.
+The [`drupal_redirect_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_redirect_form/7) function is called at this point.
 
-MORE ON THIS!!!!!!!
+This function handles redirecting after a valid form submission is completed. It kicks the user to whatever page is defined in `$form_state['redirect']`, if one is at all:
+
+```php
+if (isset($form_state ['redirect'])) {
+  if (is_array($form_state ['redirect'])) {
+    call_user_func_array('drupal_goto', $form_state ['redirect']);
+  }
+  else {
+    drupal_goto($form_state ['redirect']);
+  }
+}
+```
+
+Note that this supports passing an array into `$form_state['redirect']` instead of just a string path. Doing so will pass the array pieces into `drupal_goto()` as arguments, which means that you can pass along options, which end up being passed to the `url()` function.
+
+And finally, if we haven't redirected yet, meaning `$form_state['redirect']` wasn't defined, then we just reload the current page.
+
+```php
+drupal_goto(current_path(), array('query' => drupal_get_query_parameters()));
+```
+
+And just like that, our submission is done, and off we go.
 
 ### Cache form and form state if possible
 
