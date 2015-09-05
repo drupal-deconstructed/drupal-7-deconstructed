@@ -260,6 +260,32 @@ if (isset($element ['#after_build']) && !isset($element ['#after_build_done'])) 
 }
 ```
 
+#### Set the triggering element
+
+It's useful to know which button was clicked to submit the form, as this button can carry custom submission or validation handlers.
+
+```php
+if (!$form_state['programmed'] && !isset($form_state['triggering_element']) && !empty($form_state['buttons'])) {
+  $form_state['triggering_element'] = $form_state['buttons'][0];
+}
+```
+
+Pretty simple. The only gotcha is that it makes sure that the form wasn't submitted programmatically via the [`drupal_form_submit()`](http://api.drupal.org/api/search/7/drupal_form_submit) function (which sets `$form_state['programmed']` to `TRUE`), because if it was, then there would have been no button clicked at all.
+
+#### Look for validate/submit handlers on the triggering element
+
+If a button was clicked to submit the form (i.e., the "triggering element"), and that button had custom `#validate` or `#submit` properties, then those need to be used instead of the form-level ones. To do this, `form_builder()` runs this little snippet:
+
+```php
+foreach (array('validate', 'submit') as $type) {
+  if (isset($form_state['triggering_element']['#' . $type])) {
+    $form_state[$type . '_handlers'] = $form_state['triggering_element']['#' . $type];
+  }
+}
+```
+
+Later on, when we're validating the form, we'll check for that.
+
 And that wraps things up for `form_builder()`. Again, it handles a few other details as well, but that's the gist.
 
 ### Validate the form input (if it exists)
@@ -276,15 +302,160 @@ if ($form_state ['process_input']) {
 
 Where does `$form_state['process_input']` get set? That happens back in the `form_builder()` function, if either `$form_state['input']` or `$form_state['programmed']` are non-empty. In other words, if there is user input, or we're submitting the form programmatically, then we set `$form_state['process_input']` to TRUE, which flags it for validation and submission.
 
-Let's see what actually happens in [`drupal_validate_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_validate_form/7).
+Let's see what actually happens in [`drupal_validate_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_validate_form/7). Turns out, that function calls [`_form_validate()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/_form_validate/7) which is where the heavy lifting happens. 
+
+The `_form_validate()` function is another recursive form function which calls itself on each child element of the given element. So if we're starting with the form itself, then `_form_validate()` will call `_form_validate()` for each of the form's children, which will call `_form_validate()` for each of those children's children, and so on until it has run on everything.
+
+But what actually happens there?
+
+#### Validate `#maxlength`
+
+First of all, it validates the `#maxlength` property. 
+
+```php
+if (isset($elements ['#maxlength']) && drupal_strlen($elements ['#value']) > $elements ['#maxlength']) {
+  form_error(...);
+}
+```
+
+#### Validate that `#value` exists in `#options`
+
+Next, it validates that if `#options` exists, then `#value` is one of the possible options. The code for this is a bit too long and detailed to be posted as a snippet here, but the idea is simple. For select fields, checkboxes, and radio buttons, it just verifies that the user isn't trying to be sneaky and submit a value that wasn't an option to begin with.
+
+#### Validate `#required`
+
+After that, we need to make sure that if `#required` is `TRUE` on the given element, then a valid `#value` exists for it. 
+
+This is a little tricky since `#value` can have a few different formats. It can be a string, or an array, or an integer. So we need to support each of those. The fact that an unchecked checkbox has a value of 0 (the integer), which means it would fail validation, combined with the fact that a text input could have a value of "0" (the string), which means it would pass validation since "0" is not an empty string, makes it especially tricky.
+
+```php
+if (isset($elements ['#needs_validation']) && $elements ['#required']) {
+  $is_empty_multiple = (!count($elements ['#value']));
+  $is_empty_string = (is_string($elements ['#value']) && drupal_strlen(trim($elements ['#value'])) == 0);
+  $is_empty_value = ($elements ['#value'] === 0);
+  if ($is_empty_multiple || $is_empty_string || $is_empty_value) {
+    if (isset($elements ['#title'])) {
+      form_error($elements, $t('!name field is required.', array('!name' => $elements ['#title'])));
+    }
+    else {
+      form_error($elements);
+    }
+  }
+}
+```
+
+See that? It just has a separate check for each of the 3 possible formats. Not so bad.
+
+#### Execute user-defined validation handlers
+
+We've reached the part where custom validation callbacks run.
+
+```php
+if (isset($form_id)) {
+  form_execute_handlers('validate', $elements, $form_state);
+}
+```
+
+That simple call to [`form_execute_handlers()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_execute_handlers/7) tells Drupal to run any custom validation callbacks. These are defined as things `$form_state['validate_handlers']` array if populated (this is described in the "Look for validate/submit handlers on the triggering element" section earlier in this chapter), otherwise it checks the `form['#validate']` array.
+
+Assuming it finds some (or at least one) validation callbacks, it cycles through them and runs them:
+
+```php
+foreach ($handlers as $function) {
+  $function($form, $form_state);
+}
+```
+
+Simple enough. Then the callbacks themselves have the ability to call `form_set_error()` as needed to flag validation failures.
+
+#### Execute element-specific validation handlers
+
+In addition to form-level validation, individual elements can also provide their own validation callbacks using the [`#element_validate`](https://api.drupal.org/api/drupal/developer!topics!forms_api_reference.html/7#element_validate) property, which should an array of validation functions for the given element.
+
+These are run like so:
+
+```php
+elseif (isset($elements ['#element_validate'])) {
+  foreach ($elements ['#element_validate'] as $function) {
+    $function($elements, $form_state, $form_state ['complete form']);
+  }
+}
+```
+
+And with that, we have reached the end of the `_form_validate()` function.
+
+#### Account for `#limit_validation_errors`
+
+We're back in `drupal_validate_form()` now, and all validation has had a chance to run at this point. 
+
+But before moving onto either submitting the form if it validated or reloading it with errors if not, we have one more step. We need to check the [`#limit_validation_errors`](https://api.drupal.org/api/drupal/developer!topics!forms_api_reference.html/7#limit_validation_errors) property on the triggering element (i.e., the button used to submit the form).
+
+This property can be set on form buttons to tell Drupal to ignore any failed validation on elements that aren't specifically listed. This is most commonly used for things like AJAX calls that aren't meant to validate and submit the entire form, such as "Add More" for adding new empty inputs to a form without submitting it.
+
+The code for this is a bit more detailed than we need to get here. All it's really doing is removing any non-validated form values from `$form_state['values']` so that only values that passed validation are left around for the submit callbacks. This way, we can reach submit callbacks without throwing any unwanted errors, without the possibility of submitting data that doesn't validate in the process.
+
+#### What does `form_set_error()` do?
+
+Before we move onto submission, it's worth looking at how errors actually get set. When a validation function calls [`form_set_error()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_set_error/7) to flag a validation failure, what happens?
+
+The `form_set_error()` function keeps a static cache of form errors for the current form that it confusingly calls `$form`.
+
+```php
+$form = &drupal_static(__FUNCTION__, array());
+```
+
+Note that this `$form` is NOT the actual `$form` that's being validated. It's just an array of error messages, keyed by the name of the elements that contain them. When called, it sets an error like so:
+
+```php
+$form [$name] = $message;
+if ($message) {
+  drupal_set_message($message, 'error');
+}
+```
+
+In that snippet, `$form` is the static variable that holds validation messages, `$name` is the name of the element, and `$message` is the error message being set. Note that there's a little more to `form_set_error()` than that because it has to account for children elements which have strange names like `foo][bar][baz` as opposed to just `baz`, but those are just details.
+
+So that's all well and good, but how can we use this to decide if the form passed or failed validation? Well, the [`form_get_errors()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_get_errors/7) function is used for that. This simple function just calls `form_set_error()` with no arguments to retrieve the static variable that holds validation messages, and returns them if they exist, otherwise it doesn't return at all.
+
+So before submitting the form, we can just ensure that `form_get_errors()` returns nothing to be sure that we have passed validation.
 
 ### Submit the form input (if it exists)
 
-Coming soon...
+Back in [`drupal_process_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_process_form/7), it's time to submit the form. 
 
-### Deal with multistep forms
+```php
+if ($form_state ['submitted'] && !form_get_errors() && !$form_state ['rebuild']) {
+  form_execute_handlers('submit', $form, $form_state);
+```
 
-Coming soon...
+That's really all there is to it. We've already talked about `form_get_errors()` and `form_execute_handlers()` above. All we're doing here is running the submit handlers defined for the form in the `#submit` property of the triggering element if set, or in `$form['#submit']` if not, just like we did for `#validate`.
+
+After actually submitting the form by running the submit callbacks as above, there are a few other things to do.
+
+#### Clear out the form cache
+
+Now that the form has been submitted, we have no more use for its session-specific caches, so we can clear them out. 
+
+```php
+if (!variable_get('cache', 0) && !empty($form_state ['values']['form_build_id'])) {
+  cache_clear_all('form_' . $form_state ['values']['form_build_id'], 'cache_form');
+  cache_clear_all('form_state_' . $form_state ['values']['form_build_id'], 'cache_form');
+}
+```
+
+Note that the check for `!empty($form_state ['values']['form_build_id'])` makes sure that we only clear out the form cache built specifically for the current user.
+
+#### Process batches defined during submission
+
+The Form API has built in support for batch operations. Submit handlers can call `batch_set()` to set up batch operations, for long running things that might time out if handled all in a single request.
+
+Any defined batch operations are gathered up using `batch_get()` and processed here. The innards of how the batch system works are discussed in a later chapter, so I won't go into details here.
+
+#### Redirect the form
+
+The [`drupal_redirect_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_redirect_form/7) function is called at this point. If `$form_state['redirect']` is defined, then it just does a simple `drupal_goto()` to it.
+
+MORE ON THIS!!!!!!!
 
 ### Cache form and form state if possible
 
