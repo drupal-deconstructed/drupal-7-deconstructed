@@ -1,22 +1,28 @@
 # The Form System
 
-**Note: this chapter is not complete!**
-
 Ah yes. The form system. Who doesn't love the Drupal 7 form system, right? Right?
 
-The typical Drupal developer can probably tell you how to build a form and what the big array of fields should look like, but it's very doubtful that that developer has any idea how Drupal takes that big array and converts it into an actual HTML form.
+The typical Drupal developer can probably tell you how to build a form and what the big array of fields should look like, but it's very doubtful that that developer has any idea how Drupal takes that big array and displays it on the page, or validates it, or decides whether validation passed, or figures out which button was clicked to submit the form, or dozens of other useful things to know.
 
 Fear not! By the end of this chapter you will be that developer no longer!
 
 ## A quick summary
 
-The form system is very easy to understand.
+Theres's a lot of code to the form system (the `form.inc` file is almost 5,000 lines long) but it's really not too difficult to understand.
 
-![Form system call stack](http://i.imgur.com/lhcS4LX.png)
+To start, [`drupal_get_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_get_form/7) is called which runs the form builder function to assemble the form array. Then it gets processed a bit (lots of details, none of which are worth of mention in our "quick summary") and handed off to the render system for display. The render system is discussed in a later chapter so I'll save the details of converting a form array into HTML markup there.
 
-Hope that helps!
+When the form is submitted, the page reloads which means that the exact same thing happens - `drupal_get_form()` is called which runs the form builder function to assemble the form array. The difference is that this time, the form submission is grabbed from `$_GET` or `$_POST` (Drupal tries to do that every time, even on viewing, and it just ignores the result if there isn't any valid submission to process). Drupal then recognizes that there is a valid form submission, and flags it for validation and submission.
 
-## Kick things off
+For validation, it has a few hardcoded things to check for, such as `#required`, `#maxlength`, and a validation `#value` that exists in the `#options` array for applicable form elements. Then it runs any user-defined validation callbacks for the form. Any one of those can run `form_set_error()` to create an error on a form element, which tells Drupal not to submit the form.
+
+Once validation is done, we check to see if `form_get_errors()` is empty, and if not, we run any user defined submission callbacks for the form.
+
+And finally, once the submit callbacks have run, and we're all done, we redirect away from the form, either by going to wherever `$form_state['redirect']` tells us to, or by just falling back to reloading the page.
+
+That's it! Now then, onto the details. We're going to examine each of the 3 life stages of the form: displaying, validating, and submitting.
+
+## Displaying a form
 
 In the beginning, there is (usually) a call to [`drupal_get_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_get_form/7). This could be the function defined as a page callback in `hook_menu()`, or it could be called from a `hook_block_view()`, or it could be included in the `content_type` plugin for a Panels pane, or any number of other things. But whatever you're talking about, if it involves displaying a form, then you're probably going to be calling `drupal_get_form()` to fetch it, and you're probably going to be passing in the name of your custom form builder function as the `$form_id` parameter.
 
@@ -39,7 +45,7 @@ This is already a little tricky because of the argument handling. The `drupal_ge
 
 Anyways, we end up calling [`drupal_build_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_build_form/7), which is a workhorse of a function. It does a lot of things, so let's take them one step at a time.
 
-## Set some defaults
+### Set some defaults
 
 The first thing that `drupal_build_form()` does is adds some default values to the `$form_state` array, like so:
 
@@ -74,7 +80,7 @@ function form_state_defaults() {
 
 Any given `$form_state` should generally have all of those keys included, although the values for them may be different, since we are talking about "defaults" after all.
 
-## Fetch the form from cache if possible
+### Fetch the form from cache if possible
 
 The second important function of `drupal_build_form()` is to try to grab the form from the forms cache, if it exists there.
 
@@ -107,7 +113,7 @@ If so, meaning we *do* have previously entered values to stick into the form, we
 
 And that's it. At the end of it all, we just return `$form` if it was set back at the beginning. Otherwise, we return nothing. Then, back in [`drupal_build_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_build_form/7), all we have left to do is process the form using `drupal_process_form()` (more on that in a bit), and return it.
 
-## If not cached, build the form from scratch
+### If not cached, build the form from scratch
 
 Assuming the cache didn't give us anything to work with, we need to piece it together ourselves. Still inside [`drupal_build_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_build_form/7), we use two very important functions to do that.
 
@@ -186,7 +192,7 @@ So we start with [`hook_form_alter()`](https://api.drupal.org/api/drupal/modules
 
 Note that order matters here, because this gives us a way to control priority. We can use `hook_form_FORM_ID_alter()` if we want to make sure we have the last say.
 
-## Process the form
+### Process the form
 
 Whether we grabbed the form from cache or built it ourselves, we need to process it once we have it. 
 
@@ -196,9 +202,9 @@ drupal_process_form($form_id, $form, $form_state);
 
 The [`drupal_process_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_process_form/7) function is really the heart of the form API. This is where the form gets assembled, validated, and submitted.
 
-Let's take each of those 3 phases one by one.
+For this section, we're only interested in displaying the form, so we'll get to validation and submission later.
 
-### Build the form elements
+#### Build the form elements
 
 Yes, I know this is confusing, because we've already "built" the form by calling its form builder function to grab the form array. What's happening here is different. The `drupal_process_form()` function calls [`form_builder()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_builder/7). This recursive function cycles through the form tree from top to bottom, and for each element, does the following:
 
@@ -260,9 +266,62 @@ if (isset($element ['#after_build']) && !isset($element ['#after_build_done'])) 
 }
 ```
 
-#### Set the triggering element
+And that wraps things up for `form_builder()`, at least for the purposes of viewing the form. When we have a form submission to look at, it does a few other things, discussed below.
 
-It's useful to know which button was clicked to submit the form, as this button can carry custom submission or validation handlers.
+### Cache form and form state if possible
+
+With everything else done, and assuming we're just displaying the form (not submitting it), we can cache the form if appropriate. Here's the code:
+
+```php
+if (!$form_state ['rebuild'] && $form_state ['cache'] && empty($form_state ['no_cache'])) {
+  form_set_cache($form ['#build_id'], $unprocessed_form, $form_state);
+}
+```
+
+Nothing to it! Note that we only cache if we haven't specifically told the form to rebuild or to avoid caching.
+
+### How does the form get rendered?
+
+I know what you're thinking. How does the form actually get displayed? How does this giant array get converted to a set of `<input>` and `<form>` and `<select>` tags? 
+
+Well, the end result of all of this form building work is a [render array](https://www.drupal.org/node/930760). Converting render arrays to markup to be displayed to end users is whole new ball of wax, and we'll talk about that in the Render chapter.
+
+## Validating the form
+
+One interesting thing about the Form API is that the call stack is the same whether we're viewing, validating, or submitting. When the user submits a form, it just reloads the page and  therefore re-runs `drupal_get_form()`, but the difference this time around is that Drupal recognizes that the form was just submitted and thus flags it for input processing.
+
+Here's how that happens.
+
+### Flag the form as "submitted"
+
+This process starts early on, in `drupal_build_form()` (which, as you may remember, gets called from `drupal_get_form()` which is the function that starts everything):
+
+```php
+if (!isset($form_state['input'])) {
+  $form_state['input'] = $form_state['method'] == 'get' ? $_GET : $_POST;
+}
+```
+
+All we do here is just set `$form_state['input']` to either `$_GET` or `$_POST`, depending on the `method` of the form that we're building. However, right now, we don't know for sure that `$_GET` or `$_POST` contains the input of the particular form we're building, since it's certainly possible for multiple forms to exist on the page, or for the page URL to contain a query string unrelated to our form.
+
+As a fix for that problem, this happens later on in the `form_builder()` function:
+
+```php
+if ($form_state['programmed'] || (!empty($form_state['input']) && (isset($form_state['input']['form_id']) && ($form_state['input']['form_id'] == $form_id)))) {
+  $form_state['process_input'] = TRUE;
+}
+else {
+  $form_state['process_input'] = TRUE;
+}
+```
+
+Drupal basically says "if `$form_state['input']` isn't empty, and the `form_id` in it is the same as the `$form_id` of the form we're currently building, then we know that we have input ready for processing." So the `$form_id` check is the safety against the problem mentioned above.
+
+If we do have a submission of the current form, then `$form_state['process_input']` is set, and we'll use that in a bit to decide that the form needs to be validated.
+
+### Set the triggering element
+
+But first, as a quick aside, we need to store the button which was clicked to submit the form. It's a useful thing to know, as this button can carry custom submission or validation handlers.
 
 ```php
 if (!$form_state['programmed'] && !isset($form_state['triggering_element']) && !empty($form_state['buttons'])) {
@@ -284,9 +343,7 @@ foreach (array('validate', 'submit') as $type) {
 }
 ```
 
-Later on, when we're validating the form, we'll check for that.
-
-And that wraps things up for `form_builder()`. Again, it handles a few other details as well, but that's the gist.
+In a bit, we'll check to see if those button-level handlers exist, and use those instead of form level handlers if so.
 
 ### Validate the form input (if it exists)
 
@@ -300,7 +357,7 @@ if ($form_state ['process_input']) {
 }
 ```
 
-Where does `$form_state['process_input']` get set? That happens back in the `form_builder()` function, if either `$form_state['input']` or `$form_state['programmed']` are non-empty. In other words, if there is user input, or we're submitting the form programmatically, then we set `$form_state['process_input']` to TRUE, which flags it for validation and submission.
+See that `$form_state['process_input']` check, which we just talked about?
 
 Let's see what actually happens in [`drupal_validate_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_validate_form/7). Turns out, that function calls [`_form_validate()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/_form_validate/7) which is where the heavy lifting happens. 
 
@@ -308,7 +365,7 @@ The `_form_validate()` function is another recursive form function which calls i
 
 But what actually happens there?
 
-#### Validate `#maxlength`
+### Validate `#maxlength`
 
 First of all, it validates the `#maxlength` property. 
 
@@ -318,11 +375,11 @@ if (isset($elements ['#maxlength']) && drupal_strlen($elements ['#value']) > $el
 }
 ```
 
-#### Validate that `#value` exists in `#options`
+### Validate that `#value` exists in `#options`
 
 Next, it validates that if `#options` exists, then `#value` is one of the possible options. The code for this is a bit too long and detailed to be posted as a snippet here, but the idea is simple. For select fields, checkboxes, and radio buttons, it just verifies that the user isn't trying to be sneaky and submit a value that wasn't an option to begin with.
 
-#### Validate `#required`
+### Validate `#required`
 
 After that, we need to make sure that if `#required` is `TRUE` on the given element, then a valid `#value` exists for it. 
 
@@ -346,7 +403,7 @@ if (isset($elements ['#needs_validation']) && $elements ['#required']) {
 
 See that? It just has a separate check for each of the 3 possible formats. Not so bad.
 
-#### Execute user-defined validation handlers
+### Execute user-defined validation handlers
 
 We've reached the part where custom validation callbacks run.
 
@@ -368,7 +425,7 @@ foreach ($handlers as $function) {
 
 Simple enough. Then the callbacks themselves have the ability to call `form_set_error()` as needed to flag validation failures.
 
-#### Execute element-specific validation handlers
+### Execute element-specific validation handlers
 
 In addition to form-level validation, individual elements can also provide their own validation callbacks using the [`#element_validate`](https://api.drupal.org/api/drupal/developer!topics!forms_api_reference.html/7#element_validate) property, which should an array of validation functions for the given element.
 
@@ -384,7 +441,7 @@ elseif (isset($elements ['#element_validate'])) {
 
 And with that, we have reached the end of the `_form_validate()` function.
 
-#### Account for `#limit_validation_errors`
+### Account for `#limit_validation_errors`
 
 We're back in `drupal_validate_form()` now, and all validation has had a chance to run at this point. 
 
@@ -394,7 +451,7 @@ This property can be set on form buttons to tell Drupal to ignore any failed val
 
 The code for this is a bit more detailed than we need to get here. All it's really doing is removing any non-validated form values from `$form_state['values']` so that only values that passed validation are left around for the submit callbacks. This way, we can reach submit callbacks without throwing any unwanted errors, without the possibility of submitting data that doesn't validate in the process.
 
-#### What does `form_set_error()` do?
+### What does `form_set_error()` do?
 
 Before we move onto submission, it's worth looking at how errors actually get set. When a validation function calls [`form_set_error()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_set_error/7) to flag a validation failure, what happens?
 
@@ -419,7 +476,9 @@ So that's all well and good, but how can we use this to decide if the form passe
 
 So before submitting the form, we can just ensure that `form_get_errors()` returns nothing to be sure that we have passed validation.
 
-### Submit the form input (if it exists)
+## Submit the form input (if it exists)
+
+Now that all of the validation is complete, we check to see if the form passed validation, and if so, we can run submission handlers.
 
 Back in [`drupal_process_form()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/drupal_process_form/7), it's time to submit the form. 
 
@@ -477,21 +536,3 @@ drupal_goto(current_path(), array('query' => drupal_get_query_parameters()));
 ```
 
 And just like that, our submission is done, and off we go.
-
-### Cache form and form state if possible
-
-With everything else done, and assuming we haven't redirected away from the form after a submission, we can cache the form if appropriate. Here's the code:
-
-```php
-if (!$form_state ['rebuild'] && $form_state ['cache'] && empty($form_state ['no_cache'])) {
-  form_set_cache($form ['#build_id'], $unprocessed_form, $form_state);
-}
-```
-
-Nothing to it! Note that we only cache if we haven't specifically told the form to rebuild or to avoid caching.
-
-## Rendering the form
-
-I know what you're thinking. How does the form actually get displayed? How does this giant array get converted to a set of `<input>` and `<form>` and `<select>` tags? 
-
-Well, the end result of all of this form building work is a [render array](https://www.drupal.org/node/930760). Converting render arrays to markup to be displayed to end users is whole new ball of wax, and we'll talk about that in the Render chapter.
