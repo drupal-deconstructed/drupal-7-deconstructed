@@ -14,9 +14,9 @@ To start, [`drupal_get_form()`](https://api.drupal.org/api/drupal/includes%21for
 
 When the form is submitted, the page reloads which means that the exact same thing happens - `drupal_get_form()` is called which runs the form builder function to assemble the form array. The difference is that this time, the form submission is grabbed from `$_GET` or `$_POST` (Drupal tries to do that every time, even on viewing, and it just ignores the result if there isn't any valid submission to process). Drupal then recognizes that there is a valid form submission, and flags it for validation and submission.
 
-For validation, it has a few hardcoded things to check for, such as `#required`, `#maxlength`, and a validation `#value` that exists in the `#options` array for applicable form elements. Then it runs any user-defined validation callbacks for the form. Any one of those can run `form_set_error()` to create an error on a form element, which tells Drupal not to submit the form.
+For validation, it has a few hardcoded things to check for, such as `#required`, `#maxlength`, and a validation `#value` that exists in the `#options` array for applicable form elements. Then it runs any user-defined validation callbacks for the form. Any one of those can run [`form_set_error()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_set_error/7) to create an error on a form element, which tells Drupal not to submit the form.
 
-Once validation is done, we check to see if `form_get_errors()` is empty, and if not, we run any user defined submission callbacks for the form.
+Once validation is done, we check to see if [`form_get_errors()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_get_errors/7) is empty, and if not, we run any user defined submission callbacks for the form.
 
 And finally, once the submit callbacks have run, and we're all done, we redirect away from the form, either by going to wherever `$form_state['redirect']` tells us to, or by just falling back to reloading the page.
 
