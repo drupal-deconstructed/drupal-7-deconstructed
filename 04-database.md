@@ -61,7 +61,7 @@ And to close the loop, since this is supposed to be a summary after all, here's 
 8. Finally, that ends up running the `execute()` method if its parent class, which is `PDOStatement`, which actually does run the query against the target database.
 9. Our query has run, and we can fetch results using, for example, `fetchAll()` (which comes straight from `PDOStatement` or [`fetchAllAssoc()`](https://api.drupal.org/api/drupal/includes%21database%21database.inc/function/DatabaseStatementBase%3A%3AfetchAllAssoc/7) (which is a nicety provided by `DatabaseStatementBase`).
 
-To detailed? Ok fine, here it is at an EVEN HIGHER level:
+Too detailed? Ok fine, here it is at an EVEN HIGHER level:
 
 1. A query function like `db_select()` runs.
 2. It creates a connection (thanks `PDO`!).
