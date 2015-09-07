@@ -229,9 +229,9 @@ public function fields($table_alias, array $fields = array()) {
 }
 ```
 
-See what I mean about just altering the `SelectQuery` object? It either runs [`SelectQuery::addField()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddField/7) on each field if there are specific fields listed, or it sets `all_fields` to `TRUE` if not. Remember, all of this is just so that by the time we're ready to execute the query, we have a fully built query object that we can convert into a SQL statement. More on that in a bit.
+See what I mean about just altering the `SelectQuery` object? It either runs [`SelectQuery::addField()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddField/7) on each field if there are specific fields listed, or it sets `all_fields` to `TRUE` if not. Remember, all of this is just so that by the time we're ready to execute the query, we have a fully built query object that we can convert into an SQL statement. More on that in a bit.
 
-In the meantime, the 3rd line (the one with `condition()` happens to be important enough that it deserves its own section.
+In the meantime, the 3rd line (the one with `condition()`) happens to be important enough that it deserves its own section.
 
 ### A condition is added
 
