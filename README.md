@@ -2,6 +2,8 @@
 
 *How Drupal works: a plain(ish) English guide*
 
+**Written by [Mike Crittenden](http://mikecr.it) with the help of the community.**
+
 If you've ever wondered how Drupal works, then this book is for you.
 
 It should be readable without having the actual core code in front of you, but feel free to reference the actual code for anything that you'd like as you go. I've tried to include API links to any functions or classes that I talk about, so click away!

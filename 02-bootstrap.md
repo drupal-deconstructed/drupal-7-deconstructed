@@ -1,6 +1,6 @@
 # The Bootstrap Process
 
-So George's request for `/about-us` been handed to Drupal, and `index.php` is ready to bootstrap Drupal. What does that mean?
+So George's request for `/about-us` has been handed to Drupal, and `index.php` is ready to bootstrap Drupal. What does that mean?
 
 ## A quick summary
 
@@ -380,7 +380,7 @@ All that stuff that we haven't needed yet but may need after this, we require he
 
 ### Load all enabled modules
 
-The [`module_load_all(TRUE)`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_load_all/7) does exactly what you'd expect - grabs the name of every enabled module using `module_list()` and then runs `drupal_load()` on it to load it. There's also a static cache in this function so that it only runs once per request.
+The [`module_load_all()`](https://api.drupal.org/api/drupal/includes%21module.inc/function/module_load_all/7) does exactly what you'd expect - grabs the name of every enabled module using `module_list()` and then runs `drupal_load()` on it to load it. There's also a static cache in this function so that it only runs once per request.
 
 ### Registers stream wrappers
 
