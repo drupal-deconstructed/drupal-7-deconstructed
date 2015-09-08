@@ -60,7 +60,7 @@ And to close the loop, since this is supposed to be a summary after all, here's 
 8. Finally, *that* function runs the `execute()` method if its parent class, which is `PDOStatement`, which actually executes the query against the target database.
 9. Our query has run, and we can fetch results using one of many `fetch*()` functions provided by `PDOStatement` and `DatabaseStatementBase`.
 
-To detailed? Ok fine, here it is at an EVEN HIGHER level:
+Too detailed? Ok fine, here it is at an EVEN HIGHER level:
 
 1. A query function like `db_select()` runs.
 2. It creates a connection (thanks `PDO`!).
@@ -229,9 +229,9 @@ public function fields($table_alias, array $fields = array()) {
 }
 ```
 
-See what I mean about just altering the `SelectQuery` object? It either runs [`SelectQuery::addField()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddField/7) on each field if there are specific fields listed, or it sets `all_fields` to `TRUE` if not. Remember, all of this is just so that by the time we're ready to execute the query, we have a fully built query object that we can convert into a SQL statement. More on that in a bit.
+See what I mean about just altering the `SelectQuery` object? It either runs [`SelectQuery::addField()`](https://api.drupal.org/api/drupal/includes%21database%21select.inc/function/SelectQuery%3A%3AaddField/7) on each field if there are specific fields listed, or it sets `all_fields` to `TRUE` if not. Remember, all of this is just so that by the time we're ready to execute the query, we have a fully built query object that we can convert into an SQL statement. More on that in a bit.
 
-In the meantime, the 3rd line (the one with `condition()` happens to be important enough that it deserves its own section.
+In the meantime, the 3rd line (the one with `condition()`) happens to be important enough that it deserves its own section.
 
 ### A condition is added
 

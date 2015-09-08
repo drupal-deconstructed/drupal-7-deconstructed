@@ -157,11 +157,9 @@ We need the following to exist, so we set them here if they're not already there
 - `$form['form_id']` is set to a hidden element which contains the form ID, obviously
 - `$form['#id']` is set as a CSS friendly version of `$form_id`, by running it through [`drupal_html_id()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/drupal_html_id/7)
 
-#### Set up a form validation callback
+#### Register the form validation callbacks (if they exist)
 
-The source of truth for "how to validate this form" lives in `$form['#validate']`, which is an array of validation functions. But that may need to be created. 
-
-We do that here by first checking to see if there's a function whose name matches `$form_id . '_validate'` and if so, add that to the `$form['#validate']` array.
+Form validation is handled by validation callbacks. Validation callbacks are both optional and inheritable. The source of truth for "how to validate this form" lives in `$form['#validate']`, which is an array of validation functions. If it is not already set when `drupal_prepare_form` is called, Drupal initializes an empty array. It then checks to see if there's a function whose name matches `$form_id . '_validate'`. If so, we add that to the `$form['#validate']` array.
 
 Otherwise, if this is a shared form, we can grab the `base_form_id` for it and see if a `_validate` function exists for that.
 
@@ -171,7 +169,7 @@ Here, we do exactly the same thing we just did for validation, except with `_sub
 
 #### Apply theme suggestions
 
-If `$form['#theme']` isn't set, we just make it array with one value: the `$form_id`.
+If `$form['#theme']` isn't set, we just make it an array with one value: the `$form_id`.
 
 If this happens to be a shared form, we add the base form ID to the array as well.
 
@@ -249,7 +247,7 @@ Now that `#process`	has run for an element, we're ready to process that element,
 - Assign a decimal placeholder weight to child elements to preserve order
 - A few other less important things
 
-And then finally, and most importantly, we end up running `form_builder()` on the current element. This is obviously a recursive function call, since we're already inside of `form_builder()`, so this is how child elements get built and processed.
+Finally, and most importantly, we end up running `form_builder()` on the current element. This is obviously a recursive function call, since we're already inside of `form_builder()`, so this is how child elements get built and processed.
 
 #### Call element `#after_build` functions
 
@@ -470,7 +468,7 @@ if ($message) {
 }
 ```
 
-In that snippet, `$form` is the static variable that holds validation messages, `$name` is the name of the element, and `$message` is the error message being set. Note that there's a little more to `form_set_error()` than that because it has to account for children elements which have strange names like `foo][bar][baz` as opposed to just `baz`, but those are just details.
+In that snippet, `$form` is the static variable that holds validation messages, `$name` is the name of the element, and `$message` is the error message being set. Note that there's a little more to `form_set_error()` than that because it has to account for child elements which have strange names like `foo][bar][baz` as opposed to just `baz`, but those are just details.
 
 So that's all well and good, but how can we use this to decide if the form passed or failed validation? Well, the [`form_get_errors()`](https://api.drupal.org/api/drupal/includes%21form.inc/function/form_get_errors/7) function is used for that. This simple function just calls `form_set_error()` with no arguments to retrieve the static variable that holds validation messages, and returns them if they exist, otherwise it doesn't return at all.
 
