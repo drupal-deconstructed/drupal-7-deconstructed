@@ -354,7 +354,7 @@ This is a good time to note that the language system is complicated and confusin
 
 ## 8. `DRUPAL_BOOTSTRAP_FULL`
 
-And we have landed. Now that we already have the building blocks like a database and a session and configuration, we can add All Of The Other Things. And the [`_drupal_bootstrap_function()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/_drupal_bootstrap_full/7) does just that.
+And we have landed. Now that we already have the building blocks like a database and a session and configuration, we can add All Of The Other Things. We require the common.inc file and its [`_drupal_bootstrap_full()`](https://api.drupal.org/api/drupal/includes%21common.inc/function/_drupal_bootstrap_full/7) function does just that.
 
 ### Requires a ton of files
 
