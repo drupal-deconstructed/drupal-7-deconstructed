@@ -45,8 +45,43 @@ $enable_dependencies is true by default. Most of the situations in which
 it is overridden are in tests or when running other installs which can
 be trusted to manage their own dependencies.
 
-system_rebuild_module_data() is itself implemented in a module
-(system.module) to be precise.
+[system_rebuild_module_data()](https://api.drupal.org/api/drupal/modules!system!system.module/function/system_rebuild_module_data/7) is itself implemented in a module
+(system.module to be precise). It's a short function, so let's look at it in its entirety:
+```
+function system_rebuild_module_data() {
+  $modules_cache = &drupal_static(__FUNCTION__);
+  // Only rebuild once per request. $modules and $modules_cache cannot be
+  // combined into one variable, because the $modules_cache variable is reset by
+  // reference from system_list_reset() during the rebuild.
+  if (!isset($modules_cache)) {
+    $modules = _system_rebuild_module_data();
+    ksort($modules);
+    system_get_files_database($modules, 'module');
+    system_update_files_database($modules, 'module');
+    $modules = _module_build_dependencies($modules);
+    $modules_cache = $modules;
+  }
+  return $modules_cache;
+}
+```
+Rebuilding the cache is a relatively expensive operation, so we first
+check to see if we already have it cached. If not, we call
+_system_rebuild_module_data() which does all the heavy lifting.
+
+It's too long to reproduce, but the general gist of what it does is:
+1. Scan the modules directories under the current installation profile
+   and under sites/all to find every file that ends with a ".module" 
+   extension.
+2. If the directory it is in also has a .info file, call
+   drupal_parse_info_file() on it. That function is basically just a
+   cache wrapper around drupal_parse_info_format(), which is largely
+   an ugly regular expression that turns a .info file into a nested
+   array. For details on the .info format itself, see [Writing module
+   .info files (Drupal 7.x)](https://www.drupal.org/node/542202)
+
+*TODO: Pick back up at the point where we include the profile itself
+as a module.*
+
 
 ## The module lifecycle
 All of the functions that define the module subsystem live in
