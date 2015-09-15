@@ -1,5 +1,7 @@
 # Nodes
 
+**Note: this chapter is not yet complete!**
+
 Nodes are Drupal's most basic content unit. Traditionally in Drupal every type of content like a page or blog post is a node, although in Drupal 7 it is not strictly necessary to use nodes when something like a Views Page or an Entity record might be more suitable. Modules can define their own node types as well.
 
 Here are the <a href="https://www.drupal.org/node/49768">default properties of Drupal 7 node objects from the official documentation</a>. Generally all these properties are available in the theme layer when working with node displays:
