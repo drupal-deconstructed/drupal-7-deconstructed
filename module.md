@@ -131,3 +131,9 @@ module_list() is a fairly thin wrapper around system_list().
 
 ## Uninstalling a module
 
+## Odds and ends to work in somewhere
+- One option in the .info file that you may not be familiar with is
+  *required*. If set to TRUE, the module cannot be disabled. This should
+  only be set in core modules. At the time of this writing, the
+  following modules are always required: field_sql_storage, field, text,
+  filter, node, system, and user.
