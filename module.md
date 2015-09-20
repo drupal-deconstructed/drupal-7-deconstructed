@@ -10,6 +10,24 @@ Aside from extensibility, a second advantage is that it is possible to
 disable unneeded modules to reduce the amount of code that is executed,
 which improves Drupal's performance and reduces its exposure to attacks.
 
+## The underlying database
+All of the module information is stored in the system table.
++----------------+--------------+------+-----+---------+-------+
+| Field          | Type         | Null | Key | Default | Extra |
++----------------+--------------+------+-----+---------+-------+
+| filename       | varchar(255) | NO   | PRI |         |       |
+| name           | varchar(255) | NO   |     |         |       |
+| type           | varchar(255) | NO   | MUL |         |       |
+| owner          | varchar(255) | NO   |     |         |       |
+| status         | int(11)      | NO   |     | 0       |       |
+| throttle       | tinyint(4)   | NO   |     | 0       |       |
+| bootstrap      | int(11)      | NO   |     | 0       |       |
+| schema_version | smallint(6)  | NO   |     | -1      |       |
+| weight         | int(11)      | NO   |     | 0       |       |
+| info           | text         | YES  |     | NULL    |       |
++----------------+--------------+------+-----+---------+-------+
+
+
 ## How modules get registered
 Before we can use the functionality provided by a module, we must first
 download it, install it, and enable it. The act of downloading the
@@ -119,7 +137,14 @@ calls module_load_all with NULL. *Need to figure out why that is*
 module_list returns the list of enabled modules. If bootstrap is TRUE,
 it will only return the bootstrap modules.
 
-module_list() is a fairly thin wrapper around system_list().
+module_list() is a fairly thin wrapper around [system_list()](https://api.drupal.org/api/drupal/includes!module.inc/function/system_list/7). system_list() can return either:
+1. All enabled modules
+2. All bootstrap modules
+3. All themes
+
+The value for the cache bucket keyed by this function's name is an
+array. There are separate sub-lists of the cache for each of the
+scenarios listed above.
 
 ## Responding to hooks
 
