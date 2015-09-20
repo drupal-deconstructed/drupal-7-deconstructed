@@ -12,6 +12,7 @@ which improves Drupal's performance and reduces its exposure to attacks.
 
 ## The underlying database
 All of the module information is stored in the system table.
+```
 +----------------+--------------+------+-----+---------+-------+
 | Field          | Type         | Null | Key | Default | Extra |
 +----------------+--------------+------+-----+---------+-------+
@@ -26,6 +27,7 @@ All of the module information is stored in the system table.
 | weight         | int(11)      | NO   |     | 0       |       |
 | info           | text         | YES  |     | NULL    |       |
 +----------------+--------------+------+-----+---------+-------+
+```
 
 
 ## How modules get registered
