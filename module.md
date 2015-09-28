@@ -89,19 +89,49 @@ check to see if we already have it cached. If not, we call
 _system_rebuild_module_data() which does all the heavy lifting.
 
 It's too long to reproduce, but the general gist of what it does is:
-1. Scan the modules directories under the current installation profile
+1. Use [drupal_system_listing()](https://api.drupal.org/api/drupal/includes!common.inc/function/drupal_system_listing/7)
+   to scan the modules directories under the current installation profile
    and under sites/all to find every file that ends with a ".module" 
    extension.
-2. If the directory it is in also has a .info file, call
+2. Add the installation profile to list of modules and guarantee that
+   its hooks are executed after all other modules by setting the weight
+   to 1000.
+3. Provide a reasonable set of defaults for .info parameters that might
+   not be provided by individual modules.
+4. If the directory it is in also has a .info file, call
    drupal_parse_info_file() on it. That function is basically just a
    cache wrapper around drupal_parse_info_format(), which is largely
    an ugly regular expression that turns a .info file into a nested
    array. For details on the .info format itself, see [Writing module
-   .info files (Drupal 7.x)](https://www.drupal.org/node/542202)
+   .info files (Drupal 7.x)](https://www.drupal.org/node/542202). There
+   is a test immediately thereafter to skip the module if it did not
+   have a .info file.
+5. Merge in the defaults from step 3 above.
+6. Prefix any stylesheets and javascript with the module path.
+7. Invoke hook_system_info_alter(). This is worth a whole subchapter on
+   its own, because hooks are how Drupal does its module magic.
 
-*TODO: Pick back up at the point where we include the profile itself
-as a module.*
+## Hooks
+Hooks are the heart of the module system. Essentially there are two
+types of hooks:
 
+###Alter hooks
+Alter hooks allow you to change the contents of an object. These often
+  contain the word "alter" in the name
+
+
+###Intercepting hooks
+Intercepting hooks allow modules to respond to an event (such as a
+  node being saved).
+
+###Info hooks
+Some developers make the further distinction of info hooks which allow
+  a developer to retrieve information about an object, e.g.
+  hook_block_info(). These hooks often have "info" in the name.
+
+
+
+ 
 
 ## The module lifecycle
 All of the functions that define the module subsystem live in
