@@ -10,6 +10,11 @@ Aside from extensibility, a second advantage is that it is possible to
 disable unneeded modules to reduce the amount of code that is executed,
 which improves Drupal's performance and reduces its exposure to attacks.
 
+All of the functions that define the module subsystem live in
+[module.inc](https://api.drupal.org/api/drupal/includes!module.inc/7).
+You may remember from chapter 2 that this file is first included during the DRUPAL\_BOOTSTRAP\_VARIABLES
+phase of the bootstrap process.
+
 ## The underlying database
 All of the module information is stored in the system table.
 ```
@@ -117,7 +122,8 @@ types of hooks:
 
 ###Alter hooks
 Alter hooks allow you to change the contents of an object. These often
-  contain the word "alter" in the name
+contain the word "alter" in the name. Under the hood, alter hooks are
+calls to the drupal_alter() function. 
 
 
 ###Intercepting hooks
@@ -134,10 +140,6 @@ Some developers make the further distinction of info hooks which allow
  
 
 ## The module lifecycle
-All of the functions that define the module subsystem live in
-[module.inc](https://api.drupal.org/api/drupal/includes!module.inc/7).
-You may remember from chapter 2 that this file is first included during the DRUPAL\_BOOTSTRAP\_VARIABLES
-phase of the bootstrap process.
 
 Modules are loaded by the [module\_load\_all](module_load_all) function.
 This function takes a single boolean parameter, $bootstrap. If it is
