@@ -125,6 +125,20 @@ Alter hooks allow you to change the contents of an object. These often
 contain the word "alter" in the name. Under the hood, alter hooks are
 calls to the drupal_alter() function. 
 
+Considering how important it is, drupal_alter() is a surprisingly small
+function, if you exclude the comment lines. As an aside, the comments in
+this function are exceptionally good, and serve as a great example of
+the kind of commenting that you should be doing as a developer.
+
+Because drupal_alter is frequently called, it uses the advanced
+drupal_static() pattern, as described in the
+[performance](18-performance.md) chapter. drupal_alter() may take either
+a single type of alterable data or an array of alterable types. The
+former is, by far, the more common use case.
+
+We'll describe that case first, and after you understand the function
+talk about how it differs when an array is passed.
+
 
 ###Intercepting hooks
 Intercepting hooks allow modules to respond to an event (such as a
