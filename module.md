@@ -117,18 +117,44 @@ It's too long to reproduce, but the general gist of what it does is:
    its own, because hooks are how Drupal does its module magic.
 
 ## Hooks
-Hooks are the heart of the module system. Essentially there are two
-types of hooks:
+Hooks are the heart of the module system. A hook is just a PHP function
+that follows a naming convention of <module name>_<hook name>. The meat
+of most modules is a set of hook implementations and various 
+supporting functions (which are not required to follow any particular
+naming convention).
+
+In order to generate the list of modules that implement particular
+hooks, we call (module_implements())[https://api.drupal.org/api/drupal/includes!module.inc/function/module_implements/7]
+with the name of the hook. As you might imagine, scanning all of the PHP
+files in every module is an expensive operation, so this is typically
+maintained in cache. As an aside, that's why you have to clear cache
+when you write a new hook implementation in one of your modules.
+
+
+Depending on whom you ask, there are either two or three types of hooks:
+1. alter hooks
+2. intercepting hooks
+3. info hooks
 
 ###Alter hooks
 Alter hooks allow you to change the contents of an object. These often
 contain the word "alter" in the name. Under the hood, alter hooks are
-calls to the drupal_alter() function. 
+calls to the drupal_alter() function.
 
 Considering how important it is, drupal_alter() is a surprisingly small
 function, if you exclude the comment lines. As an aside, the comments in
 this function are exceptionally good, and serve as a great example of
 the kind of commenting that you should be doing as a developer.
+
+drupal_alter() takes two required arguments:
+$type - the kind of data element to be altered ("form",
+"field_display", "token_info", etc.). This can be an array, as in the
+case of forms which allow you to implement hook_form_alter() to alter all
+forms or hook_form_FORM_ID_alter() to alter a specific form.
+
+$data - An appropriate data type to be altered in the implementation of
+the hook. Exactly what this is depends on the type of thing being
+altered.
 
 Because drupal_alter is frequently called, it uses the advanced
 drupal_static() pattern, as described in the
@@ -138,6 +164,10 @@ former is, by far, the more common use case.
 
 We'll describe that case first, and after you understand the function
 talk about how it differs when an array is passed.
+
+Assuming that we don't already have the functions cached, we build the
+hook name from the type and the string "_alter" (e.g., "form_alter"). 
+
 
 
 ###Intercepting hooks
