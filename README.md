@@ -13,7 +13,7 @@ It should be readable without having the actual core code in front of you, but f
 If you want to contribute to this, you have a few options.
 
 1. Submit pull requests for updates or new chapters.
-2. Subscribe to [the repo](https://github.com/mikecrittenden/drupal-7-deconstructed) and review new updates as they come in.
+2. Subscribe to [the repo](https://github.com/drupal-deconstructed/drupal-7-deconstructed) and review new updates as they come in.
 3. Come talk to me! I'm [mikecrittenden@gmail.com](mailto:mikecrittenden@gmail.com) or [@mcrittenden](http://twitter.com/mcrittenden).
 
 ## FAQ
