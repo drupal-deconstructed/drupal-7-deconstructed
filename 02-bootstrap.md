@@ -74,10 +74,11 @@ Here, a timer is started so that the time it takes to render the page can be mea
 drupal_settings_initialize();
 ```
 
-The [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function is super important, for exactly 2 reasons:
+The [`drupal_settings_initialize()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_settings_initialize/7) function is super important, for at least 3 reasons:
 
 1. It includes the all-important `settings.php` file which contains our database connection info (which isn't used yet), among other things.
 2. It creates many of our favorite global variables, such as `$cookie_domain`, `$conf`, `$is_https`, and more!
+3. It sets the name of the session cookie. PHP, by default, stores the session id in a cookie named PHPSESSID. Drupal instead builds a cookie name that starts with the substring SESS and ends with a hash of the cookie domain.
 
 And that's the end of the CONFIGURATION bootstrap. 1 down, 7 to go!
 
