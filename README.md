@@ -32,5 +32,5 @@ If you want to contribute to this, you have a few options.
   <dd>I'd like to dive into how some of the more popular contrib modules work, such as Views, Panels, CTools, etc., once the core chapters are complete.</dd>
 
   <dt>What about best practices for actually building Drupal sites?</dt>
-  <dd>This book is specifically meant to be about how Drupal works, not about how to build and structure Drupal sites. For that, check out [drupalorganised.com](http://www.drupalorganised.com).</dd>
+  <dd>This book is specifically meant to be about how Drupal works, not about how to build and structure Drupal sites. For that, check out [Drupal Organised](http://www.drupalorganised.com).</dd>
 </dl>
