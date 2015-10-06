@@ -2,7 +2,7 @@
 
 *How Drupal works: a plain(ish) English guide*
 
-**Written by [Mike Crittenden](http://mikecr.it) with the help of the community.**
+**Written by [Mike Crittenden](http://mikecr.it) with the help of [Rob Huffstedtler](https://github.com/rhuffstedtler) and the community.**
 
 If you've ever wondered how Drupal works, then this book is for you.
 
