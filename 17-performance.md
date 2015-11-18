@@ -49,6 +49,10 @@ database.
 ##Data caching in Drupal
 
 
+=======
+Coming soon...
+
+>>>>>>> master:16-performance.md
 *todo: talk about drupal_static()*
 Need to describe the "advanced usage pattern" for drupal\_static. This
 [blog post](http://jmuras.com/blog/index.html%3Fp=537.html) is the best
@@ -66,3 +70,4 @@ there*
 ##Reverse proxies
 *talk about varnish. Make this short because this is inherently not an
 internal - it's about avoiding Drupal's internals*
+=======
