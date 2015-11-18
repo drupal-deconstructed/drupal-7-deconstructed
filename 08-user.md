@@ -1,3 +1,0 @@
-# Users, Sessions, Roles, and Permissions
-
-Coming soon...

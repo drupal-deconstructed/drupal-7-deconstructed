@@ -52,6 +52,7 @@ database.
 =======
 Coming soon...
 
+>>>>>>> master:16-performance.md
 *todo: talk about drupal_static()*
 Need to describe the "advanced usage pattern" for drupal\_static. This
 [blog post](http://jmuras.com/blog/index.html%3Fp=537.html) is the best

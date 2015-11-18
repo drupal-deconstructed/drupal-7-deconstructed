@@ -2,7 +2,7 @@
 
 *How Drupal works: a plain(ish) English guide*
 
-**Written by [Mike Crittenden](http://mikecr.it) with the help of the community.**
+**Written by [Mike Crittenden](http://mikecr.it) with the help of [Rob Huffstedtler](https://github.com/rhuffstedtler) and the community.**
 
 If you've ever wondered how Drupal works, then this book is for you.
 
@@ -13,7 +13,7 @@ It should be readable without having the actual core code in front of you, but f
 If you want to contribute to this, you have a few options.
 
 1. Submit pull requests for updates or new chapters.
-2. Subscribe to [the repo](https://github.com/mikecrittenden/drupal-7-deconstructed) and review new updates as they come in.
+2. Subscribe to [the repo](https://github.com/drupal-deconstructed/drupal-7-deconstructed) and review new updates as they come in.
 3. Come talk to me! I'm [mikecrittenden@gmail.com](mailto:mikecrittenden@gmail.com) or [@mcrittenden](http://twitter.com/mcrittenden).
 
 ## FAQ
@@ -30,4 +30,7 @@ If you want to contribute to this, you have a few options.
 
   <dt>What about deconstructing contrib?</dt>
   <dd>I'd like to dive into how some of the more popular contrib modules work, such as Views, Panels, CTools, etc., once the core chapters are complete.</dd>
+
+  <dt>What about best practices for actually building Drupal sites?</dt>
+  <dd>This book is specifically meant to be about how Drupal works, not about how to build and structure Drupal sites. For that, check out http://drupalorganised.com.</dd>
 </dl>
