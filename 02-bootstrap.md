@@ -138,6 +138,7 @@ if (!isset($_COOKIE [session_name()]) && $cache_enabled) {
 
 It only returns a cached response (assuming one exists to return) if the user doesn't have a valid session cookie. This is a way of ensuring that only anonymous users see cached pages, and authenticated users don't. (What's that? [You want authenticated users to see cached pages too](https://ohthehugemanatee.org/blog/2014/06/09/authenticated-user-caching-in-drupal/)?)
 
+
 What's inside that "fetch and return cached response" block? Lots of stuff!
 
 ### Populates the global $user object
@@ -146,7 +147,7 @@ What's inside that "fetch and return cached response" block? Lots of stuff!
 $user = drupal_anonymous_user();
 ```
 
-The [`drupal_anonymous_user()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_anonymous_user/7) function just creates an empty user object with a `uid` of 0.  We're creating it here just because it may need to be used later on down the line, such as in some `hook_boot()` implementation, and also because its timestamp will be checked and possibly logged.
+The [`drupal\_anonymous\_user()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_anonymous_user/7) function just creates an empty user object with a `uid` of 0.  We're creating it here just because it may need to be used later on down the line, such as in some `hook\_boot()` implementation, and also because its timestamp will be checked and possibly logged.
 
 ### Checks to see if the page is already cached
 
@@ -154,7 +155,17 @@ The [`drupal_anonymous_user()`](https://api.drupal.org/api/drupal/includes%21boo
 $cache = drupal_page_get_cache();
 ```
 
-The [`drupal_page_get_cache()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_page_get_cache/7) function is actually simpler than you'd think. It just checks to see if the page is cacheable (i.e., if the request method is either `GET` or `HEAD`, as told in [`drupal_page_is_cacheable()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_page_is_cacheable/7)), and if so, it runs `cache_get()` with the current URL against the `cache_page` database table, to fetch the cache, if there is one.
+The [`drupal\_page\_get\_cache()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_page_get_cache/7) function is actually simpler than you'd think. It just checks to see if the page is cacheable (i.e., if the request method is either `GET` or `HEAD`, as told in [`drupal_page_is_cacheable()`](https://api.drupal.org/api/drupal/includes%21bootstrap.inc/function/drupal_page_is_cacheable/7)), and if so, it runs `cache_get()` with the current URL against the `cache_page` database table, to fetch the cache, if there is one.
+
+An interesting situation occurs in a single sign on scenario. When the user is logged into the master site, but is visiting a particular Drupal site in the site family for the first time, that user will not have a session cookie on that particular site. This situation is one of the major use cases for hook\_boot(), which is invoked immediately prior to trying to serve the cached page.
+
+```
+      if (variable_get('page_cache_invoke_hooks', TRUE)) {
+        bootstrap_invoke_all('boot');
+      }
+```
+
+Your particular implementation of hook\_boot() can test for a shared cookie (or other condition like a header injected by a proxy), and then force Drupal to continue with a full bootstrap. See the implementation in the bakery conrib module for a good example of this.
 
 ### Serves the response from that cache
 
