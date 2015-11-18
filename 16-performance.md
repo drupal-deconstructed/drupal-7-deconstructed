@@ -49,6 +49,8 @@ database.
 ##Data caching in Drupal
 
 
+=======
+Coming soon...
 
 *todo: talk about drupal_static()*
 Need to describe the "advanced usage pattern" for drupal\_static. This
@@ -67,3 +69,4 @@ there*
 ##Reverse proxies
 *talk about varnish. Make this short because this is inherently not an
 internal - it's about avoiding Drupal's internals*
+=======
