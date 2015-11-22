@@ -118,13 +118,13 @@ It's too long to reproduce, but the general gist of what it does is:
 
 ## Hooks
 Hooks are the heart of the module system. A hook is just a PHP function
-that follows a naming convention of <module name>_<hook name>. The meat
+that follows a naming convention of \<module name\>_\<hook name\>. The meat
 of most modules is a set of hook implementations and various 
 supporting functions (which are not required to follow any particular
 naming convention).
 
 In order to generate the list of modules that implement particular
-hooks, we call (module_implements())[https://api.drupal.org/api/drupal/includes!module.inc/function/module_implements/7]
+hooks, we call (module_implements\(\))[https://api.drupal.org/api/drupal/includes!module.inc/function/module_implements/7]
 with the name of the hook. As you might imagine, scanning all of the PHP
 files in every module is an expensive operation, so this is typically
 maintained in cache. As an aside, that's why you have to clear cache
