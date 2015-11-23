@@ -166,6 +166,8 @@ An interesting situation occurs in a single sign on scenario. When the user is l
 ```
 
 Your particular implementation of hook\_boot() can test for a shared cookie (or other condition like a header injected by a proxy), and then force Drupal to continue with a full bootstrap. See the implementation in the bakery conrib module for a good example of this.
+We'll take a deeper look at this function once we get to the module
+chapter.
 
 ### Serves the response from that cache
 

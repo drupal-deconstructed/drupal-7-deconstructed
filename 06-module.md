@@ -118,13 +118,13 @@ It's too long to reproduce, but the general gist of what it does is:
 
 ## Hooks
 Hooks are the heart of the module system. A hook is just a PHP function
-that follows a naming convention of <module name>_<hook name>. The meat
+that follows a naming convention of \<module name\>_\<hook name\>. The meat
 of most modules is a set of hook implementations and various 
 supporting functions (which are not required to follow any particular
 naming convention).
 
 In order to generate the list of modules that implement particular
-hooks, we call (module_implements())[https://api.drupal.org/api/drupal/includes!module.inc/function/module_implements/7]
+hooks, we call [module_implements()](https://api.drupal.org/api/drupal/includes!module.inc/function/module_implements/7)
 with the name of the hook. As you might imagine, scanning all of the PHP
 files in every module is an expensive operation, so this is typically
 maintained in cache. As an aside, that's why you have to clear cache
@@ -185,7 +185,8 @@ Some developers make the further distinction of info hooks which allow
 
 ## The module lifecycle
 
-Modules are loaded by the [module\_load\_all](module_load_all) function.
+As we mentioned in the bootstrap chapter, Modules are loaded by the
+[module\_load\_all](module_load_all) function.
 This function takes a single boolean parameter, $bootstrap. If it is
 true, only the bootstrap modules are loaded (those modules that
 implement hook\_boot, hook\_exit, hook\_watchdog, or
@@ -222,9 +223,28 @@ module_list() is a fairly thin wrapper around [system_list()](https://api.drupal
 
 The value for the cache bucket keyed by this function's name is an
 array. There are separate sub-lists of the cache for each of the
-scenarios listed above.
+scenarios listed above. In cases 1 and 2 above, system_list() uses
+db_query() to query the system table and caches the result.
+
+*TODO: Describe special handling for themes. May want to push some of
+that into the theme chapter*
+
+Once we have the list, we call [drupal_load()](https://api.drupal.org/api/drupal/includes!bootstrap.inc/function/drupal_load/7)
+on each module in the list. drupal_load is basically just a cache
+wrapper around PHP's [include_once](http://php.net/manual/en/function.include-once.php)
+statement. Once this has happened, all of the module's functions are
+available in the global scope. Most important of these are our hook
+implementations.
 
 ## Responding to hooks
+If your module has a properly named hook, it will be executed when it is
+needed by virtue of either Drupal core or another module calling the
+[module_invoke()](https://api.drupal.org/api/drupal/includes!module.inc/function/calls/module_invoke/7)
+function. We've already seen that this occurs in the bootstrap phase
+when bootstrap_invoke_all() is called. Let's take a closer look at that
+now.
+
+**Pick up here
 
 ## Exposing hooks of our own
 
